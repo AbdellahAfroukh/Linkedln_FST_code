@@ -49,7 +49,10 @@ class User(Base):
     thematiqueDeRecherche = relationship("ThematiqueDeRecherche",secondary=user_thematique_association, back_populates="users")
     googleScholarIntegration = relationship("GoogleScholarIntegration", back_populates="user", uselist=False, cascade="all, delete-orphan")
     cv = relationship("CV", back_populates="user", uselist=False, cascade="all, delete-orphan")
-    
+    messagesSent = relationship("Message", back_populates="sender", cascade="all, delete-orphan")
+    chatsAsUser1 = relationship("Chat", foreign_keys="Chat.user1Id", back_populates="user1", cascade="all, delete-orphan")
+    chatsAsUser2 = relationship("Chat", foreign_keys="Chat.user2Id", back_populates="user2", cascade="all, delete-orphan")
+
     projets = relationship("Projet", back_populates="user", cascade="all, delete-orphan")
 
 

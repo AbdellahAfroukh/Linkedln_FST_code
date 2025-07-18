@@ -1,5 +1,4 @@
 from sqlalchemy import Column, Integer, String,ForeignKey, Text
-import enum
 from sqlalchemy.orm import relationship
 from models import Base,user_specialite_association,user_thematique_associations
 
