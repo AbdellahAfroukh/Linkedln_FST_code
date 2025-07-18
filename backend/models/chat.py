@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer,ForeignKey, Text,DateTime
 from sqlalchemy.orm import relationship
 from models import Base
-from datetime import datetime
+from datetime import datetime,timezone
 
 
 class Chat(Base):
@@ -23,7 +23,7 @@ class Message(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     content = Column(Text, nullable=False)
-    timestamp = Column(DateTime, default=datetime.timezone.utc)
+    timestamp = Column(DateTime,default=datetime.now(timezone.utc))
 
     #Relationships
     chatId = Column(Integer, ForeignKey("chats.id"), nullable=False)
