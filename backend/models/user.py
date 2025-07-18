@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey, Text,
 import enum
 from sqlalchemy.orm import relationship
 from datetime import date
-from models import Base
+from models import Base,user_thematique_association, user_specialite_association
 
 
 class UserType(str, enum.Enum):
@@ -46,8 +46,8 @@ class User(Base):
     departement = relationship("Departement", back_populates="users")
     laboratoire = relationship("Laboratoire", back_populates="users")
     equipe = relationship("Equipe", back_populates="users")
-    specialite = relationship("Specialite", back_populates="users")
-    thematiqueDeRecherche = relationship("ThematiqueDeRecherche", back_populates="users")
+    specialite = relationship("Specialite",secondary=user_specialite_association, back_populates="users")
+    thematiqueDeRecherche = relationship("ThematiqueDeRecherche",secondary=user_thematique_association, back_populates="users")
 
     projets = relationship("Projet", back_populates="user", cascade="all, delete-orphan")
 
