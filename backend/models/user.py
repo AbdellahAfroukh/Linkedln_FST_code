@@ -1,7 +1,6 @@
 from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey, Text,Enum,Float
 import enum
 from sqlalchemy.orm import relationship
-from datetime import date
 from models import Base,user_thematique_association, user_specialite_association
 
 
@@ -48,6 +47,7 @@ class User(Base):
     equipe = relationship("Equipe", back_populates="users")
     specialite = relationship("Specialite",secondary=user_specialite_association, back_populates="users")
     thematiqueDeRecherche = relationship("ThematiqueDeRecherche",secondary=user_thematique_association, back_populates="users")
+    googleScholarIntegration = relationship("GoogleScholarIntegration", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
     projets = relationship("Projet", back_populates="user", cascade="all, delete-orphan")
 

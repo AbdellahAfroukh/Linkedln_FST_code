@@ -1,7 +1,6 @@
-from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey, Text,Enum,Float
+from sqlalchemy import Column, Integer, String,ForeignKey, Text
 import enum
 from sqlalchemy.orm import relationship
-from datetime import date
 from models import Base,user_specialite_association,user_thematique_associations
 
 
@@ -18,9 +17,9 @@ class Univerity(Base):
 
     #Relationships
     users = relationship("User", back_populates="university")
-    etablissements = relationship("Etablissement", back_populates="university")
-    laboratoires = relationship("Laboratoire", back_populates="university")
-    equipes = relationship("Equipe", back_populates="university")
+    etablissements = relationship("Etablissement", back_populates="university", cascade="all, delete-orphan")
+    laboratoires = relationship("Laboratoire", back_populates="university", cascade="all, delete-orphan")
+    equipes = relationship("Equipe", back_populates="university", cascade="all, delete-orphan")
 
 
 class Etablissement(Base):
@@ -38,7 +37,7 @@ class Etablissement(Base):
 
     university = relationship("University", back_populates="etablissements")
     users = relationship("User", back_populates="etablissement")
-    departements = relationship("Departement", back_populates="etablissement")
+    departements = relationship("Departement", back_populates="etablissement", cascade="all, delete-orphan")
 
 
 class Departement(Base):
