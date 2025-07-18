@@ -48,7 +48,8 @@ class User(Base):
     specialite = relationship("Specialite",secondary=user_specialite_association, back_populates="users")
     thematiqueDeRecherche = relationship("ThematiqueDeRecherche",secondary=user_thematique_association, back_populates="users")
     googleScholarIntegration = relationship("GoogleScholarIntegration", back_populates="user", uselist=False, cascade="all, delete-orphan")
-
+    cv = relationship("CV", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    
     projets = relationship("Projet", back_populates="user", cascade="all, delete-orphan")
 
 
