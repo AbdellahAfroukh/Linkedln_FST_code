@@ -1,21 +1,21 @@
-# Ignore environment files
-.env
+# Ignore all .env files everywhere
+**/.env
 
-# Ignore Python cache and compiled files
-__pycache__/
-*.pyc
-*.pyo
+# Ignore Python cache and compiled files everywhere
+**/__pycache__/
+**/*.pyc
+**/*.pyo
 
-# Ignore VS Code settings
-.vscode/
+# Ignore VS Code settings everywhere
+**/.vscode/
 
-# Ignore OS-specific files
-.DS_Store
-Thumbs.db
+# Ignore OS-specific files everywhere
+**/.DS_Store
+**/Thumbs.db
 
-# Ignore log files
-*.log
+# Ignore log files everywhere
+**/*.log
 
-# Ignore virtual environments
-venv/
-env/
+# Ignore virtual environments everywhere
+**/venv/
+**/env/
