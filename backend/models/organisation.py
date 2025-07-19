@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String,ForeignKey, Text
 from sqlalchemy.orm import relationship
-from models import Base,user_specialite_association,user_thematique_associations
+from models import Base,user_specialite_association,user_thematique_association
 
 
 
@@ -100,4 +100,4 @@ class ThematiqueDeRecherche(Base):
     description = Column(Text, nullable=True)
 
     #Relationships
-    users = relationship("User",secondary=user_thematique_associations, back_populates="thematiqueDeRecherche")
+    users = relationship("User",secondary=user_thematique_association, back_populates="thematiqueDeRecherche")

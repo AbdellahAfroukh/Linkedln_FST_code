@@ -13,6 +13,7 @@ class GoogleScholarIntegration(Base):
     lastSynced = Column(Date, nullable=True)
 
     # Relationships
+    userId = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)
 
     user = relationship("User", back_populates="googleScholarIntegration")
     publications = relationship("Publication", back_populates="googleScholarIntegration", cascade="all, delete-orphan")
