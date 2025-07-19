@@ -55,6 +55,9 @@ class User(Base):
     connectionsSent = relationship("Connection", foreign_keys="Connection.senderId", back_populates="sender", cascade="all, delete-orphan")
     connectionsReceived = relationship("Connection", foreign_keys="Connection.receiverId", back_populates="receiver", cascade="all, delete-orphan")
     projets = relationship("Projet", back_populates="user", cascade="all, delete-orphan")
+    posts = relationship("Post", back_populates="user", cascade="all, delete-orphan")
+    comments = relationship("Comment", back_populates="user", cascade="all, delete-orphan")
+    reactions = relationship("Reaction", back_populates="user", cascade="all, delete-orphan")
 
 
 class Projet(Base):
