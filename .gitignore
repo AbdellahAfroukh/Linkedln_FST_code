@@ -1,5 +1,5 @@
 # Ignore all .env files everywhere
-backend/.env
+**/.env
 
 # Ignore Python cache and compiled files everywhere
 **/__pycache__/
@@ -19,3 +19,4 @@ backend/.env
 # Ignore virtual environments everywhere
 **/venv/
 **/env/
+    
