@@ -82,29 +82,3 @@ class Projet(Base):
     user = relationship("User", back_populates="projets")
 
 
-# Pydantic models for User
-
-class ErrorCode(Enum):
-    ok = "ok"
-    otp_required = "otp_required"
-    wrong_otp = "wrong_otp"
-    wrong_credentials = "wrong_credentials"
-
-class LoginRequest(BaseModel):
-    email: str
-    password: str
-    otp: Optional[str] = None
-
-class LoginResponse(BaseModel):
-    access_token: Optional[str] = None
-    refresh_token: Optional[str] = None
-    token_type: str = "bearer"
-    status: ErrorCode
-    message: Optional[str] = None
-    user: Optional[dict] = None
-
-class OtpToggle(BaseModel):
-    enabled: bool
-
-class OtpVerification(BaseModel):
-    otp: str

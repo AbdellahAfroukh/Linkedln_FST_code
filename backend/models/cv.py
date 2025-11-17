@@ -55,7 +55,7 @@ class Contact(Base):
     # Relationships
     cvId = Column(Integer, ForeignKey("cvs.id"), nullable=False, unique=True)
 
-    cv = relationship("CV", back_populates="contact", cascade="all, delete-orphan")
+    cv = relationship("CV", back_populates="contact")
 
 
 class Formation(Base):
@@ -71,7 +71,7 @@ class Formation(Base):
     # Relationships
     cvId = Column(Integer, ForeignKey("cvs.id"), nullable=False)
 
-    cv = relationship("CV", back_populates="formations", cascade="all, delete-orphan")
+    cv = relationship("CV", back_populates="formations")
 
 
 class Competence(Base):
@@ -84,7 +84,7 @@ class Competence(Base):
     # Relationships
     cvId = Column(Integer, ForeignKey("cvs.id"), nullable=False)
 
-    cv = relationship("CV", back_populates="competences", cascade="all, delete-orphan")
+    cv = relationship("CV", back_populates="competences")
 
 
 class Langue(Base):
@@ -97,7 +97,7 @@ class Langue(Base):
     # Relationships
     cvId = Column(Integer, ForeignKey("cvs.id"), nullable=False)
 
-    cv = relationship("CV", back_populates="langues", cascade="all, delete-orphan")
+    cv = relationship("CV", back_populates="langues")
 
 
 
@@ -116,4 +116,4 @@ class Experience(Base):
     # Relationships
     cvId = Column(Integer, ForeignKey("cvs.id"), nullable=False)
 
-    cv = relationship("CV", back_populates="experiences", cascade="all, delete-orphan")
+    cv = relationship("CV", back_populates="experiences")

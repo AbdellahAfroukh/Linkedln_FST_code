@@ -1,0 +1,17 @@
+# Existing dependencies
+fastapi
+uvicorn[standard]
+sqlalchemy
+pydantic[email]
+
+# Authentication & Security
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+
+# 2FA
+pyotp
+qrcode[pil]
+
+pydantic-settings
+argon2-cffi

@@ -4,7 +4,7 @@ from models import Base,user_specialite_association,user_thematique_association
 
 
 
-class Univerity(Base):
+class University(Base):
     __tablename__ = "universities"
     
     id = Column(Integer, primary_key=True, index=True)
