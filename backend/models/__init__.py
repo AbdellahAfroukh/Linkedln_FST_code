@@ -2,7 +2,7 @@ from database import Base
 
 
 from models.associations import user_thematique_association, user_specialite_association
-from models.user import User, Projet
+from models.user import User, Projet,ErrorCode, LoginRequest, LoginResponse, OtpToggle, OtpVerification
 from models.organisation import Univerity, Etablissement, Departement, Laboratoire,ThematiqueDeRecherche, Specialite, Equipe
 from models.google_scholar import GoogleScholarIntegration, Publication
 from models.cv import CV,Contact,Competence,Formation,Langue,Experience

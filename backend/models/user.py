@@ -2,6 +2,8 @@ from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey, Text,
 import enum
 from sqlalchemy.orm import relationship
 from models import Base,user_thematique_association, user_specialite_association
+from pydantic import BaseModel
+from typing import Optional
 
 
 class UserType(str, enum.Enum):
@@ -22,6 +24,8 @@ class User(Base):
 
     user_type = Column(Enum(UserType), nullable=True)
     profile_completed = Column(Boolean, default=False)
+    otp_configured = Column(Boolean, default=False)
+    otp_secret = Column(String, nullable=True)
 
     # Profile completion
     nom = Column(String, nullable=True)
@@ -76,3 +80,31 @@ class Projet(Base):
     userId = Column(Integer, ForeignKey("users.id"), nullable=False)
     
     user = relationship("User", back_populates="projets")
+
+
+# Pydantic models for User
+
+class ErrorCode(Enum):
+    ok = "ok"
+    otp_required = "otp_required"
+    wrong_otp = "wrong_otp"
+    wrong_credentials = "wrong_credentials"
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+    otp: Optional[str] = None
+
+class LoginResponse(BaseModel):
+    access_token: Optional[str] = None
+    refresh_token: Optional[str] = None
+    token_type: str = "bearer"
+    status: ErrorCode
+    message: Optional[str] = None
+    user: Optional[dict] = None
+
+class OtpToggle(BaseModel):
+    enabled: bool
+
+class OtpVerification(BaseModel):
+    otp: str
