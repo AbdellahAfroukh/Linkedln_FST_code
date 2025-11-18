@@ -3,7 +3,7 @@ import uvicorn
 import models
 from database import engine, Base
 from fastapi.middleware.cors import CORSMiddleware
-from routes import auth_routes
+from routes import auth_routes, admin_routes
 
 
 app = FastAPI(
@@ -22,6 +22,7 @@ app.add_middleware(
 
 models.Base.metadata.create_all(bind=engine)
 app.include_router(auth_routes.router)
+app.include_router(admin_routes.router)
 
 @app.get("/")
 def root():
@@ -32,4 +33,4 @@ def root():
     }
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="127.0.0.1", port=8001, reload=True)
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
