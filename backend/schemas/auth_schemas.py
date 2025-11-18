@@ -33,6 +33,19 @@ class Token2FA(BaseModel):
     user: Optional[dict] = None
 
 
+class ProfileCompleteRequest(BaseModel):
+    nom: str = Field(..., min_length=1)
+    prenom: str = Field(..., min_length=1)
+    universityId: Optional[int] = None
+    etablissementId: Optional[int] = None
+    departementId: Optional[int] = None
+    laboratoireId: Optional[int] = None
+    equipeId: Optional[int] = None
+    specialiteId: Optional[int] = None
+    thematiqueDeRechercheId: Optional[int] = None
+    numeroDeSomme: Optional[str] = None
+
+
 class OTPVerify(BaseModel):
     token: str = Field(..., min_length=6, max_length=6)
     email: EmailStr

@@ -11,10 +11,11 @@ from schemas.auth_schemas import (
     OTPSetup, 
     RefreshTokenRequest,
     Disable2FARequest,
-    UserResponse
+    UserResponse,
+    ProfileCompleteRequest
 )
 from dependencies import get_current_user, get_current_active_user
-from models.user import User
+from models.user import User, UserType
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -49,14 +50,14 @@ def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
         email=user_credentials.email,
         password=user_credentials.password
     )
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Check if 2FA is enabled
     if user.otp_configured:
         return Token2FA(
@@ -64,11 +65,11 @@ def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
             refresh_token="",
             requires_2fa=True
         )
-    
-    # Generate tokens
+
+    # Generate tokens for all users (profile completion does not block token issuance)
     access_token = AuthService.create_access_token(data={"sub": user.id})
     refresh_token = AuthService.create_refresh_token(data={"sub": user.id})
-    
+
     return Token2FA(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -82,6 +83,64 @@ def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
             "otp_configured": user.otp_configured
         }
     )
+
+
+@router.post("/complete-profile", response_model=UserResponse)
+def complete_profile(
+    data: ProfileCompleteRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Complete user profile for enseignant or doctorant.
+    Requires a valid JWT. Admin users are not allowed.
+    Enseignant must provide `numeroDeSomme`.
+    """
+    # Disallow admins from using this endpoint
+    if current_user.user_type == UserType.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admins are not allowed to complete a regular profile"
+        )
+
+    if current_user.user_type not in (UserType.ENSEIGNANT, UserType.DOCTORANT):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Profile completion allowed only for 'enseignant' or 'doctorant' users"
+        )
+
+    # For enseignant, numeroDeSomme is required
+    if current_user.user_type == UserType.ENSEIGNANT and not data.numeroDeSomme:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="'numeroDeSomme' is required for enseignant users"
+        )
+
+    # Update fields on the authenticated user
+    current_user.nom = data.nom
+    current_user.prenom = data.prenom
+    if data.universityId is not None:
+        current_user.universityId = data.universityId
+    if data.etablissementId is not None:
+        current_user.etablissementId = data.etablissementId
+    if data.departementId is not None:
+        current_user.departementId = data.departementId
+    if data.laboratoireId is not None:
+        current_user.laboratoireId = data.laboratoireId
+    if data.equipeId is not None:
+        current_user.equipeId = data.equipeId
+    if data.specialiteId is not None:
+        current_user.specialiteId = data.specialiteId
+    if data.thematiqueDeRechercheId is not None:
+        current_user.thematiqueDeRechercheId = data.thematiqueDeRechercheId
+    if data.numeroDeSomme is not None:
+        current_user.numeroDeSomme = data.numeroDeSomme
+
+    current_user.profile_completed = True
+    db.commit()
+    db.refresh(current_user)
+
+    return current_user
 
 
 @router.post("/verify-2fa", response_model=TokenResponse)
