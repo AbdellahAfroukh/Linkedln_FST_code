@@ -24,18 +24,16 @@ class NiveauLangue(str, enum.Enum):
 
 class CV(Base):
     __tablename__ = "cvs"
-    
     id = Column(Integer, primary_key=True, index=True)
-
     titre= Column(String, nullable=False)
     description = Column(Text, nullable=True)
     dateCreation = Column(Date, nullable=False)
     dateModification = Column(Date, nullable=True)
     isPublic = Column(Boolean, default=False)
+    cv_enabled = Column(Boolean, default=True)
 
     # Relationships
     userId = Column(Integer, ForeignKey("users.id"), nullable=False,unique=True)
-    
     user = relationship("User", back_populates="cv")
     contact= relationship("Contact", back_populates="cv",uselist=False, cascade="all, delete-orphan")
     formations = relationship("Formation", back_populates="cv", cascade="all, delete-orphan")
