@@ -3,12 +3,12 @@ import uvicorn
 import models
 from database import engine, Base
 from fastapi.middleware.cors import CORSMiddleware
-from routes import auth_routes, admin_routes, cv_routes
+from routes import auth_routes, admin_routes, cv_routes ,connection_routes
 
 
 app = FastAPI(
     title="Academic Platform API",
-    description="API with JWT authentication and 2FA",
+    description="API for Academic Platform with JWT authentication and 2FA support",
     version="1.0.0"
 )
 
@@ -24,6 +24,7 @@ models.Base.metadata.create_all(bind=engine)
 app.include_router(auth_routes.router)
 app.include_router(admin_routes.router)
 app.include_router(cv_routes.router)
+app.include_router(connection_routes.router)
 
 @app.get("/")
 def root():
