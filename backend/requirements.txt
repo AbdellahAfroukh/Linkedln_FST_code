@@ -13,5 +13,10 @@ python-multipart
 pyotp
 qrcode[pil]
 
+# Web Scraping
+beautifulsoup4
+requests
+lxml
+
 pydantic-settings
 argon2-cffi

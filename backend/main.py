@@ -3,7 +3,7 @@ import uvicorn
 import models
 from database import engine, Base
 from fastapi.middleware.cors import CORSMiddleware
-from routes import auth_routes, admin_routes, cv_routes ,connection_routes, chat_routes
+from routes import auth_routes, admin_routes, cv_routes ,connection_routes, chat_routes, google_scholar_routes, post_routes, projet_routes
 
 
 app = FastAPI(
@@ -26,6 +26,9 @@ app.include_router(admin_routes.router)
 app.include_router(cv_routes.router)
 app.include_router(connection_routes.router)
 app.include_router(chat_routes.router)
+app.include_router(google_scholar_routes.router)
+app.include_router(post_routes.router)
+app.include_router(projet_routes.router)
 
 @app.get("/")
 def root():
