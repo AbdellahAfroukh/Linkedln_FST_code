@@ -1,9 +1,14 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import desc, or_
 from fastapi import HTTPException, status
 from models.organisation import (
     University, Etablissement, Departement, Laboratoire, 
     Equipe, Specialite, ThematiqueDeRecherche
 )
+from models.user import User, UserType
+from models.post import Post, Comment, Reaction
+from models.user import Projet
+from typing import Optional
 
 
 class AdminService:
@@ -385,3 +390,240 @@ class AdminService:
         db.delete(thematique)
         db.commit()
         return {"message": f"ThematiqueDeRecherche with ID {thematique_id} deleted successfully"}
+
+    # ============ User Management ============
+    @staticmethod
+    def list_all_users(db: Session, skip: int = 0, limit: int = 100, user_type: Optional[UserType] = None) -> dict:
+        """List all users with optional filtering by user type"""
+        query = db.query(User)
+        
+        if user_type:
+            query = query.filter(User.user_type == user_type)
+        
+        total = query.count()
+        users = query.offset(skip).limit(limit).all()
+        
+        return {"total": total, "users": users}
+
+    @staticmethod
+    def get_user_by_id(db: Session, user_id: int) -> User:
+        """Get user by ID with all relationships"""
+        user = db.query(User).options(
+            joinedload(User.university),
+            joinedload(User.etablissement),
+            joinedload(User.departement),
+            joinedload(User.laboratoire),
+            joinedload(User.equipe)
+        ).filter(User.id == user_id).first()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"User with ID {user_id} not found"
+            )
+        
+        return user
+
+    @staticmethod
+    def search_users(db: Session, search_term: str, skip: int = 0, limit: int = 100) -> dict:
+        """Search users by name or email"""
+        search_pattern = f"%{search_term}%"
+        
+        query = db.query(User).filter(
+            or_(
+                User.fullName.ilike(search_pattern),
+                User.email.ilike(search_pattern),
+                User.nom.ilike(search_pattern),
+                User.prenom.ilike(search_pattern)
+            )
+        )
+        
+        total = query.count()
+        users = query.offset(skip).limit(limit).all()
+        
+        return {"total": total, "users": users}
+
+    @staticmethod
+    def update_user(db: Session, user_id: int, **kwargs) -> User:
+        """Update user information (admin can update any field except password directly)"""
+        user = AdminService.get_user_by_id(db, user_id)
+        
+        for key, value in kwargs.items():
+            if value is not None and hasattr(user, key):
+                setattr(user, key, value)
+        
+        db.commit()
+        db.refresh(user)
+        return user
+
+    @staticmethod
+    def delete_user(db: Session, user_id: int) -> dict:
+        """Delete a user (cascades to all related data)"""
+        user = AdminService.get_user_by_id(db, user_id)
+        
+        # Prevent admin from deleting themselves
+        if user.user_type == UserType.ADMIN:
+            # Optional: Add additional check if needed
+            pass
+        
+        db.delete(user)
+        db.commit()
+        
+        return {"message": f"User with ID {user_id} and all related data deleted successfully"}
+
+    @staticmethod
+    def toggle_user_activation(db: Session, user_id: int, active: bool) -> User:
+        """Activate or deactivate a user account"""
+        user = AdminService.get_user_by_id(db, user_id)
+        
+        # Could add an 'active' field to User model, for now using profile_completed as example
+        # In a real system, you'd want an 'is_active' boolean field
+        user.profile_completed = active
+        
+        db.commit()
+        db.refresh(user)
+        
+        return user
+
+    # ============ Content Moderation - Posts ============
+    @staticmethod
+    def list_all_posts(db: Session, skip: int = 0, limit: int = 100) -> dict:
+        """List all posts across the platform"""
+        total = db.query(Post).count()
+        
+        posts = db.query(Post).options(
+            joinedload(Post.user),
+            joinedload(Post.comments),
+            joinedload(Post.reactions)
+        ).order_by(desc(Post.timestamp)).offset(skip).limit(limit).all()
+        
+        return {"total": total, "posts": posts}
+
+    @staticmethod
+    def get_post_by_id(db: Session, post_id: int) -> Post:
+        """Get post by ID"""
+        post = db.query(Post).options(
+            joinedload(Post.user),
+            joinedload(Post.comments).joinedload(Comment.user),
+            joinedload(Post.reactions).joinedload(Reaction.user)
+        ).filter(Post.id == post_id).first()
+        
+        if not post:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Post with ID {post_id} not found"
+            )
+        
+        return post
+
+    @staticmethod
+    def delete_post(db: Session, post_id: int) -> dict:
+        """Delete a post (admin moderation)"""
+        post = AdminService.get_post_by_id(db, post_id)
+        db.delete(post)
+        db.commit()
+        
+        return {"message": f"Post with ID {post_id} deleted successfully"}
+
+    @staticmethod
+    def delete_user_posts(db: Session, user_id: int) -> dict:
+        """Delete all posts from a specific user"""
+        user = AdminService.get_user_by_id(db, user_id)
+        
+        deleted_count = db.query(Post).filter(Post.userId == user_id).delete()
+        db.commit()
+        
+        return {"message": f"Deleted {deleted_count} posts from user {user.fullName}"}
+
+    # ============ Content Moderation - Comments ============
+    @staticmethod
+    def list_all_comments(db: Session, skip: int = 0, limit: int = 100) -> dict:
+        """List all comments across the platform"""
+        total = db.query(Comment).count()
+        
+        comments = db.query(Comment).options(
+            joinedload(Comment.user),
+            joinedload(Comment.post)
+        ).order_by(desc(Comment.timestamp)).offset(skip).limit(limit).all()
+        
+        return {"total": total, "comments": comments}
+
+    @staticmethod
+    def delete_comment(db: Session, comment_id: int) -> dict:
+        """Delete a comment (admin moderation)"""
+        comment = db.query(Comment).filter(Comment.id == comment_id).first()
+        
+        if not comment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Comment with ID {comment_id} not found"
+            )
+        
+        db.delete(comment)
+        db.commit()
+        
+        return {"message": f"Comment with ID {comment_id} deleted successfully"}
+
+    # ============ Content Moderation - Projets ============
+    @staticmethod
+    def list_all_projets(db: Session, skip: int = 0, limit: int = 100) -> dict:
+        """List all projets across the platform"""
+        total = db.query(Projet).count()
+        
+        projets = db.query(Projet).options(
+            joinedload(Projet.user)
+        ).order_by(desc(Projet.dateDebut)).offset(skip).limit(limit).all()
+        
+        return {"total": total, "projets": projets}
+
+    @staticmethod
+    def delete_projet(db: Session, projet_id: int) -> dict:
+        """Delete a projet (admin moderation)"""
+        projet = db.query(Projet).filter(Projet.id == projet_id).first()
+        
+        if not projet:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Projet with ID {projet_id} not found"
+            )
+        
+        db.delete(projet)
+        db.commit()
+        
+        return {"message": f"Projet with ID {projet_id} deleted successfully"}
+
+    # ============ Statistics ============
+    @staticmethod
+    def get_platform_statistics(db: Session) -> dict:
+        """Get overall platform statistics"""
+        total_users = db.query(User).count()
+        total_enseignants = db.query(User).filter(User.user_type == UserType.ENSEIGNANT).count()
+        total_doctorants = db.query(User).filter(User.user_type == UserType.DOCTORANT).count()
+        total_admins = db.query(User).filter(User.user_type == UserType.ADMIN).count()
+        
+        total_posts = db.query(Post).count()
+        total_comments = db.query(Comment).count()
+        total_projets = db.query(Projet).count()
+        
+        total_universities = db.query(University).count()
+        total_etablissements = db.query(Etablissement).count()
+        total_laboratoires = db.query(Laboratoire).count()
+        
+        return {
+            "users": {
+                "total": total_users,
+                "enseignants": total_enseignants,
+                "doctorants": total_doctorants,
+                "admins": total_admins
+            },
+            "content": {
+                "posts": total_posts,
+                "comments": total_comments,
+                "projets": total_projets
+            },
+            "organisation": {
+                "universities": total_universities,
+                "etablissements": total_etablissements,
+                "laboratoires": total_laboratoires
+            }
+        }

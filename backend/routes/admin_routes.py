@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Query
 from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import get_current_admin
@@ -10,9 +10,12 @@ from schemas.admin_schemas import (
     LaboratoireCreate, LaboratoireUpdate, LaboratoireResponse,
     EquipeCreate, EquipeUpdate, EquipeResponse,
     SpecialiteCreate, SpecialiteUpdate, SpecialiteResponse,
-    ThematiqueDeRechercheCreate, ThematiqueDeRechercheUpdate, ThematiqueDeRechercheResponse
+    ThematiqueDeRechercheCreate, ThematiqueDeRechercheUpdate, ThematiqueDeRechercheResponse,
+    UserUpdateByAdmin, UserBasicResponse, UserListResponse, UserDetailResponse,
+    PlatformStatistics
 )
-from models.user import User
+from models.user import User, UserType
+from typing import Optional
 
 router = APIRouter(prefix="/admin", tags=["Admin - Organisation Management"])
 
@@ -402,3 +405,164 @@ def delete_thematique(
 ):
     """Delete a thematique (Admin only)"""
     return AdminService.delete_thematique(db=db, thematique_id=thematique_id)
+
+
+# ============ User Management Endpoints ============
+@router.get("/users", response_model=UserListResponse)
+def list_all_users(
+    skip: int = Query(0, ge=0, description="Number of users to skip"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum number of users to return"),
+    user_type: Optional[UserType] = Query(None, description="Filter by user type"),
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """List all users with optional filtering (Admin only)"""
+    return AdminService.list_all_users(db=db, skip=skip, limit=limit, user_type=user_type)
+
+
+@router.get("/users/search", response_model=UserListResponse)
+def search_users(
+    q: str = Query(..., min_length=1, description="Search term"),
+    skip: int = Query(0, ge=0, description="Number of users to skip"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum number of users to return"),
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Search users by name or email (Admin only)"""
+    return AdminService.search_users(db=db, search_term=q, skip=skip, limit=limit)
+
+
+@router.get("/users/{user_id}", response_model=UserDetailResponse)
+def get_user_details(
+    user_id: int,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Get detailed information about a specific user (Admin only)"""
+    return AdminService.get_user_by_id(db=db, user_id=user_id)
+
+
+@router.patch("/users/{user_id}", response_model=UserDetailResponse)
+def update_user(
+    user_id: int,
+    data: UserUpdateByAdmin,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Update user information (Admin only)"""
+    return AdminService.update_user(db=db, user_id=user_id, **data.dict(exclude_unset=True))
+
+
+@router.delete("/users/{user_id}", response_model=dict)
+def delete_user(
+    user_id: int,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Delete a user and all their related data (Admin only)"""
+    return AdminService.delete_user(db=db, user_id=user_id)
+
+
+@router.patch("/users/{user_id}/toggle-activation", response_model=UserDetailResponse)
+def toggle_user_activation(
+    user_id: int,
+    active: bool = Query(..., description="Activate or deactivate user"),
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Activate or deactivate a user account (Admin only)"""
+    return AdminService.toggle_user_activation(db=db, user_id=user_id, active=active)
+
+
+# ============ Content Moderation Endpoints ============
+@router.get("/posts")
+def list_all_posts(
+    skip: int = Query(0, ge=0, description="Number of posts to skip"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum number of posts to return"),
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """List all posts across the platform (Admin only)"""
+    return AdminService.list_all_posts(db=db, skip=skip, limit=limit)
+
+
+@router.get("/posts/{post_id}")
+def get_post_details(
+    post_id: int,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Get detailed information about a specific post (Admin only)"""
+    return AdminService.get_post_by_id(db=db, post_id=post_id)
+
+
+@router.delete("/posts/{post_id}", response_model=dict)
+def delete_post(
+    post_id: int,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Delete a specific post (Admin moderation)"""
+    return AdminService.delete_post(db=db, post_id=post_id)
+
+
+@router.delete("/users/{user_id}/posts", response_model=dict)
+def delete_user_posts(
+    user_id: int,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Delete all posts from a specific user (Admin moderation)"""
+    return AdminService.delete_user_posts(db=db, user_id=user_id)
+
+
+@router.get("/comments")
+def list_all_comments(
+    skip: int = Query(0, ge=0, description="Number of comments to skip"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum number of comments to return"),
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """List all comments across the platform (Admin only)"""
+    return AdminService.list_all_comments(db=db, skip=skip, limit=limit)
+
+
+@router.delete("/comments/{comment_id}", response_model=dict)
+def delete_comment(
+    comment_id: int,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Delete a specific comment (Admin moderation)"""
+    return AdminService.delete_comment(db=db, comment_id=comment_id)
+
+
+@router.get("/projets")
+def list_all_projets(
+    skip: int = Query(0, ge=0, description="Number of projets to skip"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum number of projets to return"),
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """List all projets across the platform (Admin only)"""
+    return AdminService.list_all_projets(db=db, skip=skip, limit=limit)
+
+
+@router.delete("/projets/{projet_id}", response_model=dict)
+def delete_projet(
+    projet_id: int,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Delete a specific projet (Admin moderation)"""
+    return AdminService.delete_projet(db=db, projet_id=projet_id)
+
+
+# ============ Platform Statistics ============
+@router.get("/statistics", response_model=PlatformStatistics)
+def get_platform_statistics(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Get overall platform statistics (Admin only)"""
+    return AdminService.get_platform_statistics(db=db)
