@@ -62,8 +62,8 @@ class User(Base):
     posts = relationship("Post", back_populates="user", cascade="all, delete-orphan")
     comments = relationship("Comment", back_populates="user", cascade="all, delete-orphan")
     reactions = relationship("Reaction", back_populates="user", cascade="all, delete-orphan")
-
-
+    scopus_publications = relationship("ScopusPublication", back_populates="user", cascade="all, delete-orphan")
+    scopus_profile = relationship("ScopusProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
 class Projet(Base):
     __tablename__ = "projets"
     
