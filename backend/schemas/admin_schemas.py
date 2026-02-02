@@ -110,7 +110,7 @@ class DepartementResponse(BaseModel):
 class LaboratoireCreate(BaseModel):
     nom: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
-    univesityId: Optional[int] = None
+    universityId: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -119,7 +119,7 @@ class LaboratoireCreate(BaseModel):
 class LaboratoireUpdate(BaseModel):
     nom: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
-    univesityId: Optional[int] = None
+    universityId: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -129,10 +129,11 @@ class LaboratoireResponse(BaseModel):
     id: int
     nom: str
     description: Optional[str]
-    univesityId: Optional[int]
+    universityId: Optional[int] = Field(None, alias='universityId')
 
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 
 # ============ Equipe Schemas ============

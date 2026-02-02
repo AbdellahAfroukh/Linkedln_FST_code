@@ -1,5 +1,6 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_serializer
 from typing import Optional
+from datetime import date
 from models import UserType
 
 
@@ -36,6 +37,9 @@ class Token2FA(BaseModel):
 class ProfileCompleteRequest(BaseModel):
     nom: str = Field(..., min_length=1)
     prenom: str = Field(..., min_length=1)
+    grade: Optional[str] = None
+    dateDeNaissance: Optional[str] = None
+    photoDeProfil: Optional[str] = None
     universityId: Optional[int] = None
     etablissementId: Optional[int] = None
     departementId: Optional[int] = None
@@ -72,6 +76,23 @@ class UserResponse(BaseModel):
     user_type: str
     profile_completed: bool
     otp_configured: bool
+    nom: Optional[str] = None
+    prenom: Optional[str] = None
+    grade: Optional[str] = None
+    dateDeNaissance: Optional[date] = None
+    photoDeProfil: Optional[str] = None
+    universityId: Optional[int] = None
+    etablissementId: Optional[int] = None
+    departementId: Optional[int] = None
+    laboratoireId: Optional[int] = None
+    equipeId: Optional[int] = None
+    specialiteId: Optional[int] = None
+    thematiqueDeRechercheId: Optional[int] = None
+    numeroDeSomme: Optional[str] = None
+
+    @field_serializer('dateDeNaissance')
+    def serialize_date(self, value: Optional[date]) -> Optional[str]:
+        return value.isoformat() if value else None
 
     class Config:
         from_attributes = True

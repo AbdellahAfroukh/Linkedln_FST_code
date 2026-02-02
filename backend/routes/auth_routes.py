@@ -109,8 +109,8 @@ def complete_profile(
             detail="Profile completion allowed only for 'enseignant' or 'doctorant' users"
         )
 
-    # For enseignant, numeroDeSomme is required
-    if current_user.user_type == UserType.ENSEIGNANT and not data.numeroDeSomme:
+    # For enseignant, numeroDeSomme is required only on initial profile completion
+    if current_user.user_type == UserType.ENSEIGNANT and not current_user.profile_completed and not data.numeroDeSomme:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="'numeroDeSomme' is required for enseignant users"
@@ -119,6 +119,12 @@ def complete_profile(
     # Update fields on the authenticated user
     current_user.nom = data.nom
     current_user.prenom = data.prenom
+    if data.grade is not None:
+        current_user.grade = data.grade
+    if data.dateDeNaissance is not None:
+        current_user.dateDeNaissance = data.dateDeNaissance
+    if data.photoDeProfil is not None:
+        current_user.photoDeProfil = data.photoDeProfil
     if data.universityId is not None:
         current_user.universityId = data.universityId
     if data.etablissementId is not None:
@@ -291,3 +297,79 @@ def logout(current_user: User = Depends(get_current_user)):
     - For now, just return success (client should delete tokens)
     """
     return {"message": "Logged out successfully"}
+
+
+# ============ Public Organization Endpoints for Profile Completion ============
+from models.organisation import (
+    University, Etablissement, Departement, Laboratoire, 
+    Equipe, Specialite, ThematiqueDeRecherche
+)
+
+@router.get("/organizations/universities")
+def get_universities(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all universities for profile completion"""
+    universities = db.query(University).all()
+    return [{"id": u.id, "nom": u.nom, "ville": u.ville} for u in universities]
+
+
+@router.get("/organizations/etablissements")
+def get_etablissements(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all etablissements for profile completion"""
+    etablissements = db.query(Etablissement).all()
+    return [{"id": e.id, "nom": e.nom, "ville": e.ville, "universityId": e.universityId} for e in etablissements]
+
+
+@router.get("/organizations/departements")
+def get_departements(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all departements for profile completion"""
+    departements = db.query(Departement).all()
+    return [{"id": d.id, "nom": d.nom, "etablissementId": d.etablissementId} for d in departements]
+
+
+@router.get("/organizations/laboratoires")
+def get_laboratoires(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all laboratoires for profile completion"""
+    laboratoires = db.query(Laboratoire).all()
+    return [{"id": l.id, "nom": l.nom, "universityId": l.universityId, "description": l.description} for l in laboratoires]
+
+
+@router.get("/organizations/equipes")
+def get_equipes(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all equipes for profile completion"""
+    equipes = db.query(Equipe).all()
+    return [{"id": e.id, "nom": e.nom, "universityId": e.universityId} for e in equipes]
+
+
+@router.get("/organizations/specialites")
+def get_specialites(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all specialites for profile completion"""
+    specialites = db.query(Specialite).all()
+    return [{"id": s.id, "nom": s.nom} for s in specialites]
+
+
+@router.get("/organizations/thematiques")
+def get_thematiques(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all thematiques for profile completion"""
+    thematiques = db.query(ThematiqueDeRecherche).all()
+    return [{"id": t.id, "nom": t.nom} for t in thematiques]

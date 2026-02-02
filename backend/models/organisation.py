@@ -61,7 +61,7 @@ class Laboratoire(Base):
     description = Column(Text, nullable=True)
 
     #Relationships
-    univesityId = Column(Integer, ForeignKey("universities.id"), nullable=True)
+    universityId = Column(Integer, ForeignKey("universities.id"), nullable=True)
 
     university = relationship("University", back_populates="laboratoires")
     users = relationship("User", back_populates="laboratoire")

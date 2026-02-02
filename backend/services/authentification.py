@@ -128,9 +128,18 @@ class AuthService:
     
     @staticmethod
     def verify_otp(secret: str, token: str) -> bool:
-        """Verify OTP token"""
+        """Verify OTP token with increased tolerance for time drift"""
         totp = pyotp.TOTP(secret)
-        return totp.verify(token, valid_window=1) 
+        # Increase valid_window to 2 (allows ±60 seconds)
+        # This helps with time synchronization issues between server and authenticator app
+        result = totp.verify(token, valid_window=2)
+        
+        # Debug logging
+        if not result:
+            current_code = totp.now()
+            print(f"[2FA DEBUG] Expected code: {current_code}, Received: {token}, Valid: {result}")
+        
+        return result 
     
     @staticmethod
     def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
@@ -159,12 +168,16 @@ class AuthService:
             )
         
         hashed_password = AuthService.get_password_hash(password)
+        
+        # Admin users don't need profile completion
+        profile_completed = (user_type == UserType.ADMIN)
+        
         new_user = User(
             email=email,
             password=hashed_password,
             fullName=fullName,
             user_type=user_type,
-            profile_completed=False,
+            profile_completed=profile_completed,
             otp_configured=False
         )
         
