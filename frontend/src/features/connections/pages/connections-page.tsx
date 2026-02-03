@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -80,9 +81,9 @@ export function ConnectionsPage() {
     mutationFn: connectionsApi.reject,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["connections"] });
-      toast.success("Connection rejected");
+      toast.success("Request cancelled");
     },
-    onError: () => toast.error("Failed to reject request"),
+    onError: () => toast.error("Failed to cancel request"),
   });
 
   const deleteMutation = useMutation({
@@ -130,6 +131,10 @@ export function ConnectionsPage() {
 
   const hasPendingRequest = (userId: number) => {
     return outgoingQuery.data?.some((conn) => conn.receiverId === userId);
+  };
+
+  const getPendingConnectionId = (userId: number): number | undefined => {
+    return outgoingQuery.data?.find((conn) => conn.receiverId === userId)?.id;
   };
 
   return (
@@ -188,9 +193,21 @@ export function ConnectionsPage() {
                           Connected
                         </Button>
                       ) : hasPendingRequest(user.id) ? (
-                        <Button variant="outline" size="sm" disabled>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const connectionId = getPendingConnectionId(
+                              user.id,
+                            );
+                            if (connectionId) {
+                              rejectMutation.mutate(connectionId);
+                            }
+                          }}
+                          disabled={rejectMutation.isPending}
+                        >
                           <UserPlus className="h-4 w-4 mr-2" />
-                          Pending
+                          Cancel Request
                         </Button>
                       ) : (
                         <Button
@@ -349,162 +366,172 @@ export function ConnectionsPage() {
 
       {/* User Profile Dialog */}
       <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6">
             <DialogTitle>Profile</DialogTitle>
           </DialogHeader>
           {selectedUser && (
-            <div className="space-y-6">
-              <div className="flex items-start gap-4">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src={selectedUser.photoDeProfil} />
-                  <AvatarFallback className="text-2xl">
-                    {getInitials(selectedUser.fullName)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <h2 className="text-2xl font-bold">
-                    {selectedUser.fullName}
-                  </h2>
-                  {selectedUser.grade && (
-                    <p className="text-lg text-muted-foreground">
-                      {selectedUser.grade}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-2 mt-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-sm">{selectedUser.email}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {selectedUser.nom && selectedUser.prenom && (
-                  <div>
-                    <Label className="text-muted-foreground">Full Name</Label>
-                    <p className="font-medium">
-                      {selectedUser.prenom} {selectedUser.nom}
-                    </p>
-                  </div>
-                )}
-                {selectedUser.dateDeNaissance && (
-                  <div>
-                    <Label className="text-muted-foreground">
-                      Date of Birth
-                    </Label>
-                    <p className="font-medium">
-                      {selectedUser.dateDeNaissance}
-                    </p>
-                  </div>
-                )}
-                {selectedUser.numeroDeSomme && (
-                  <div>
-                    <Label className="text-muted-foreground">
-                      Employee Number
-                    </Label>
-                    <p className="font-medium">{selectedUser.numeroDeSomme}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Organizations */}
-              <div className="space-y-3 pt-4 border-t">
-                <Label className="text-base font-semibold">Organizations</Label>
-                <div className="space-y-2">
-                  {selectedUser.university && (
-                    <div className="flex items-center gap-3 p-2 bg-muted rounded">
-                      {selectedUser.university.Logo ? (
-                        <img
-                          src={selectedUser.university.Logo}
-                          alt={selectedUser.university.nom}
-                          className="h-10 w-10 rounded object-cover"
-                        />
-                      ) : (
-                        <div className="h-10 w-10 bg-primary/20 rounded flex items-center justify-center text-xs font-bold">
-                          U
-                        </div>
+            <>
+              <ScrollArea className="flex-1 px-6 overflow-y-auto">
+                <div className="space-y-6 pb-4">
+                  <div className="flex items-start gap-4">
+                    <Avatar className="h-20 w-20">
+                      <AvatarImage src={selectedUser.photoDeProfil} />
+                      <AvatarFallback className="text-2xl">
+                        {getInitials(selectedUser.fullName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <h2 className="text-2xl font-bold">
+                        {selectedUser.fullName}
+                      </h2>
+                      {selectedUser.grade && (
+                        <p className="text-lg text-muted-foreground">
+                          {selectedUser.grade}
+                        </p>
                       )}
-                      <div>
-                        <p className="text-sm font-medium">University</p>
-                        <p className="text-xs text-muted-foreground">
-                          {selectedUser.university.nom}
-                        </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-sm">{selectedUser.email}</p>
                       </div>
                     </div>
-                  )}
-                  {selectedUser.etablissement && (
-                    <div className="flex items-center gap-3 p-2 bg-muted rounded">
-                      {selectedUser.etablissement.Logo ? (
-                        <img
-                          src={selectedUser.etablissement.Logo}
-                          alt={selectedUser.etablissement.nom}
-                          className="h-10 w-10 rounded object-cover"
-                        />
-                      ) : (
-                        <div className="h-10 w-10 bg-blue-500/20 rounded flex items-center justify-center text-xs font-bold">
-                          E
-                        </div>
-                      )}
+                  </div>
+
+                  <div className="space-y-3">
+                    {selectedUser.nom && selectedUser.prenom && (
                       <div>
-                        <p className="text-sm font-medium">Etablissement</p>
-                        <p className="text-xs text-muted-foreground">
-                          {selectedUser.etablissement.nom}
+                        <Label className="text-muted-foreground">
+                          Full Name
+                        </Label>
+                        <p className="font-medium">
+                          {selectedUser.prenom} {selectedUser.nom}
                         </p>
                       </div>
-                    </div>
-                  )}
-                  {selectedUser.departement && (
-                    <div className="flex items-center gap-3 p-2 bg-muted rounded">
-                      <div className="h-10 w-10 bg-green-500/20 rounded flex items-center justify-center text-xs font-bold">
-                        D
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Departement</p>
-                        <p className="text-xs text-muted-foreground">
-                          {selectedUser.departement.nom}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {selectedUser.laboratoire && (
-                    <div className="flex items-center gap-3 p-2 bg-muted rounded">
-                      <div className="h-10 w-10 bg-purple-500/20 rounded flex items-center justify-center text-xs font-bold">
-                        L
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Laboratory</p>
-                        <p className="text-xs text-muted-foreground">
-                          {selectedUser.laboratoire.nom}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {selectedUser.equipe && (
-                    <div className="flex items-center gap-3 p-2 bg-muted rounded">
-                      <div className="h-10 w-10 bg-orange-500/20 rounded flex items-center justify-center text-xs font-bold">
-                        T
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Team</p>
-                        <p className="text-xs text-muted-foreground">
-                          {selectedUser.equipe.nom}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {!selectedUser.university &&
-                    !selectedUser.etablissement &&
-                    !selectedUser.departement &&
-                    !selectedUser.laboratoire &&
-                    !selectedUser.equipe && (
-                      <p className="text-xs text-muted-foreground italic">
-                        No organizations assigned
-                      </p>
                     )}
-                </div>
-              </div>
+                    {selectedUser.dateDeNaissance && (
+                      <div>
+                        <Label className="text-muted-foreground">
+                          Date of Birth
+                        </Label>
+                        <p className="font-medium">
+                          {selectedUser.dateDeNaissance}
+                        </p>
+                      </div>
+                    )}
+                    {selectedUser.numeroDeSomme && (
+                      <div>
+                        <Label className="text-muted-foreground">
+                          Employee Number
+                        </Label>
+                        <p className="font-medium">
+                          {selectedUser.numeroDeSomme}
+                        </p>
+                      </div>
+                    )}
+                  </div>
 
-              <div className="flex gap-2 pt-4 border-t">
+                  {/* Organizations */}
+                  <div className="space-y-3 pt-4 border-t">
+                    <Label className="text-base font-semibold">
+                      Organizations
+                    </Label>
+                    <div className="space-y-2">
+                      {selectedUser.university && (
+                        <div className="flex items-center gap-3 p-2 bg-muted rounded">
+                          {selectedUser.university.Logo ? (
+                            <img
+                              src={selectedUser.university.Logo}
+                              alt={selectedUser.university.nom}
+                              className="h-10 w-10 rounded object-cover"
+                            />
+                          ) : (
+                            <div className="h-10 w-10 bg-primary/20 rounded flex items-center justify-center text-xs font-bold">
+                              U
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-sm font-medium">University</p>
+                            <p className="text-xs text-muted-foreground">
+                              {selectedUser.university.nom}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      {selectedUser.etablissement && (
+                        <div className="flex items-center gap-3 p-2 bg-muted rounded">
+                          {selectedUser.etablissement.Logo ? (
+                            <img
+                              src={selectedUser.etablissement.Logo}
+                              alt={selectedUser.etablissement.nom}
+                              className="h-10 w-10 rounded object-cover"
+                            />
+                          ) : (
+                            <div className="h-10 w-10 bg-blue-500/20 rounded flex items-center justify-center text-xs font-bold">
+                              E
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-sm font-medium">Etablissement</p>
+                            <p className="text-xs text-muted-foreground">
+                              {selectedUser.etablissement.nom}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      {selectedUser.departement && (
+                        <div className="flex items-center gap-3 p-2 bg-muted rounded">
+                          <div className="h-10 w-10 bg-green-500/20 rounded flex items-center justify-center text-xs font-bold">
+                            D
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">Departement</p>
+                            <p className="text-xs text-muted-foreground">
+                              {selectedUser.departement.nom}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      {selectedUser.laboratoire && (
+                        <div className="flex items-center gap-3 p-2 bg-muted rounded">
+                          <div className="h-10 w-10 bg-purple-500/20 rounded flex items-center justify-center text-xs font-bold">
+                            L
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">Laboratory</p>
+                            <p className="text-xs text-muted-foreground">
+                              {selectedUser.laboratoire.nom}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      {selectedUser.equipe && (
+                        <div className="flex items-center gap-3 p-2 bg-muted rounded">
+                          <div className="h-10 w-10 bg-orange-500/20 rounded flex items-center justify-center text-xs font-bold">
+                            T
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">Team</p>
+                            <p className="text-xs text-muted-foreground">
+                              {selectedUser.equipe.nom}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      {!selectedUser.university &&
+                        !selectedUser.etablissement &&
+                        !selectedUser.departement &&
+                        !selectedUser.laboratoire &&
+                        !selectedUser.equipe && (
+                          <p className="text-xs text-muted-foreground italic">
+                            No organizations assigned
+                          </p>
+                        )}
+                    </div>
+                  </div>
+                </div>
+              </ScrollArea>
+
+              <div className="flex gap-2 pt-4 border-t px-6 pb-6">
                 {isConnected(selectedUser.id) ? (
                   <>
                     <Button variant="outline" disabled className="flex-1">
@@ -523,9 +550,22 @@ export function ConnectionsPage() {
                     </Button>
                   </>
                 ) : hasPendingRequest(selectedUser.id) ? (
-                  <Button variant="outline" disabled className="flex-1">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      const connectionId = getPendingConnectionId(
+                        selectedUser.id,
+                      );
+                      if (connectionId) {
+                        rejectMutation.mutate(connectionId);
+                        setIsProfileDialogOpen(false);
+                      }
+                    }}
+                    disabled={rejectMutation.isPending}
+                  >
                     <UserPlus className="h-4 w-4 mr-2" />
-                    Request Pending
+                    Cancel Request
                   </Button>
                 ) : (
                   <Button
@@ -541,7 +581,7 @@ export function ConnectionsPage() {
                   </Button>
                 )}
               </div>
-            </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
