@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException, status
 from models.connection import Connection, ConnectionStatus
 from models.user import User
@@ -32,6 +32,8 @@ class ConnectionService:
         db.add(conn)
         db.commit()
         db.refresh(conn)
+        # Load relationships
+        db.refresh(conn, ["sender", "receiver"])
         return conn
 
     @staticmethod
@@ -66,19 +68,28 @@ class ConnectionService:
 
     @staticmethod
     def list_accepted(db: Session, user: User):
-        return db.query(Connection).filter(
+        return db.query(Connection).options(
+            joinedload(Connection.sender),
+            joinedload(Connection.receiver)
+        ).filter(
             ((Connection.senderId == user.id) | (Connection.receiverId == user.id)) & (Connection.status == ConnectionStatus.ACCEPTED)
         ).all()
 
     @staticmethod
     def list_pending_incoming(db: Session, user: User):
-        return db.query(Connection).filter(
+        return db.query(Connection).options(
+            joinedload(Connection.sender),
+            joinedload(Connection.receiver)
+        ).filter(
             (Connection.receiverId == user.id) & (Connection.status == ConnectionStatus.PENDING)
         ).all()
 
     @staticmethod
     def list_pending_outgoing(db: Session, user: User):
-        return db.query(Connection).filter(
+        return db.query(Connection).options(
+            joinedload(Connection.sender),
+            joinedload(Connection.receiver)
+        ).filter(
             (Connection.senderId == user.id) & (Connection.status == ConnectionStatus.PENDING)
         ).all()
 

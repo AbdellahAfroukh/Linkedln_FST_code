@@ -12,7 +12,9 @@ from schemas.auth_schemas import (
     RefreshTokenRequest,
     Disable2FARequest,
     UserResponse,
-    ProfileCompleteRequest
+    ProfileCompleteRequest,
+    UserSearchResponse,
+    UserSearchResult
 )
 from dependencies import get_current_user, get_current_active_user
 from models.user import User, UserType
@@ -373,3 +375,62 @@ def get_thematiques(
     """Get all thematiques for profile completion"""
     thematiques = db.query(ThematiqueDeRecherche).all()
     return [{"id": t.id, "nom": t.nom} for t in thematiques]
+
+
+@router.get("/users/search", response_model=UserSearchResponse)
+def search_users(
+    q: str,
+    skip: int = 0,
+    limit: int = 20,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Search users by name or email (available to all authenticated users)"""
+    from sqlalchemy import or_, func
+    from sqlalchemy.orm import joinedload
+    
+    # Search by fullName, nom, prenom, or email (case-insensitive)
+    search_term = f"%{q}%"
+    query = db.query(User).options(
+        joinedload(User.university),
+        joinedload(User.etablissement),
+        joinedload(User.departement),
+        joinedload(User.laboratoire),
+        joinedload(User.equipe)
+    ).filter(
+        or_(
+            func.lower(User.fullName).like(func.lower(search_term)),
+            func.lower(User.nom).like(func.lower(search_term)),
+            func.lower(User.prenom).like(func.lower(search_term)),
+            func.lower(User.email).like(func.lower(search_term))
+        )
+    )
+    
+    total = query.count()
+    users = query.offset(skip).limit(limit).all()
+    
+    return UserSearchResponse(
+        total=total,
+        users=[UserSearchResult.model_validate(user) for user in users]
+    )
+
+
+@router.get("/users/{user_id}", response_model=UserResponse)
+def get_user_profile(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get user profile by ID (available to all authenticated users)"""
+    from sqlalchemy.orm import joinedload
+    
+    user = db.query(User).options(
+        joinedload(User.university),
+        joinedload(User.etablissement),
+        joinedload(User.departement),
+        joinedload(User.laboratoire),
+        joinedload(User.equipe)
+    ).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user

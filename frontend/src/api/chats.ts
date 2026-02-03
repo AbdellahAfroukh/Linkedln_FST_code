@@ -1,24 +1,28 @@
 import apiClient from '@/lib/api-client';
 import {
   Chat,
-  ChatDetailResponse,
+  ChatDetail,
   Message,
-  MessageCreate,
-  SuccessResponse,
+  MessageCreateRequest,
+  CreateGroupChatRequest,
+  AddMembersRequest,
 } from '@/types';
 
 export const chatsApi = {
-  sendMessage: async (data: MessageCreate): Promise<Message> => {
-    const response = await apiClient.post('/chats/message', data);
+  // Direct message operations
+  sendMessage: async (receiverId: number, content: string): Promise<Message> => {
+    const request: MessageCreateRequest = { content, receiverId };
+    const response = await apiClient.post('/chats/message', request);
     return response.data;
   },
 
+  // Chat retrieval operations
   list: async (): Promise<Chat[]> => {
     const response = await apiClient.get('/chats');
     return response.data;
   },
 
-  get: async (id: number): Promise<ChatDetailResponse> => {
+  get: async (id: number): Promise<ChatDetail> => {
     const response = await apiClient.get(`/chats/${id}`);
     return response.data;
   },
@@ -28,12 +32,26 @@ export const chatsApi = {
     return response.data;
   },
 
+  // Direct chat operations
   getOrCreateWithUser: async (userId: number): Promise<Chat> => {
     const response = await apiClient.post(`/chats/with/${userId}`);
     return response.data;
   },
 
-  delete: async (id: number): Promise<SuccessResponse> => {
+  // Group chat operations
+  createGroupChat: async (request: CreateGroupChatRequest): Promise<Chat> => {
+    const response = await apiClient.post('/chats/group/create', request);
+    return response.data;
+  },
+
+  addMembers: async (chatId: number, memberIds: number[]): Promise<Chat> => {
+    const request: AddMembersRequest = { member_ids: memberIds };
+    const response = await apiClient.post(`/chats/${chatId}/add-members`, request);
+    return response.data;
+  },
+
+  // Delete operations
+  delete: async (id: number): Promise<{ message: string }> => {
     const response = await apiClient.delete(`/chats/${id}`);
     return response.data;
   },

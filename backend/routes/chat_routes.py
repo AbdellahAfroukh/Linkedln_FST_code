@@ -44,3 +44,4 @@ def delete_chat(chat_id: int, db: Session = Depends(get_db), current_user: User 
     """Delete a chat and all its messages"""
     result = ChatService.delete_chat(db, chat_id, current_user)
     return result
+

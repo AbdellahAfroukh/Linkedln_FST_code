@@ -21,12 +21,29 @@ export interface User {
   equipeId?: number;
   specialiteId?: number;
   thematiqueDeRechercheId?: number;
+  university?: Organisation;
+  etablissement?: Organisation;
+  departement?: Organisation;
+  laboratoire?: Organisation;
+  equipe?: Organisation;
 }
 
 export interface UserBasicInfo {
   id: number;
   fullName: string;
   photoDeProfil?: string;
+  grade?: string;
+  university?: Organisation;
+  etablissement?: Organisation;
+  departement?: Organisation;
+  laboratoire?: Organisation;
+  equipe?: Organisation;
+}
+
+export interface Organisation {
+  id: number;
+  nom: string;
+  Logo?: string;
 }
 
 // Auth types
@@ -205,9 +222,19 @@ export interface ThematiqueDeRechercheCreate {
 export interface ThematiqueDeRechercheUpdate extends Partial<ThematiqueDeRechercheCreate> {}
 
 // Admin user management types
+export interface UserBasicResponse {
+  id: number;
+  fullName: string;
+  email: string;
+  user_type?: UserType;
+  profile_completed: boolean;
+  photoDeProfil?: string;
+  grade?: string;
+}
+
 export interface UserListResponse {
   total: number;
-  users: User[];
+  users: UserBasicResponse[];
 }
 
 export interface UserDetailResponse extends User {}
@@ -347,8 +374,9 @@ export interface Connection {
   id: number;
   senderId: number;
   receiverId: number;
-  status: 'pending' | 'accepted' | 'rejected';
+  status: 'pending' | 'accepted' | 'rejected' | 'blocked';
   timestamp: string;
+  acceptedAt?: string | null;
   sender?: UserBasicInfo;
   receiver?: UserBasicInfo;
 }
@@ -452,7 +480,8 @@ export interface GoogleScholarIntegration {
   id: number;
   userId: number;
   googleScholarId: string;
-  lastSyncedAt?: string;
+  profileUrl?: string;
+  lastSynced?: string | null;
 }
 
 export interface GoogleScholarLink {
@@ -461,14 +490,14 @@ export interface GoogleScholarLink {
 
 export interface Publication {
   id: number;
-  integrationId: number;
   title: string;
-  authors?: string;
-  publicationDate?: string;
-  journal?: string;
-  citations?: number;
-  link?: string;
+  abstract?: string | null;
+  summary?: string | null;
+  publicationDate?: string | null;
+  citationCount: number;
+  googleScholarUrl?: string | null;
   isPosted: boolean;
+  googleScholarIntegrationId: number;
 }
 
 export interface PublicationListResponse {
@@ -477,10 +506,11 @@ export interface PublicationListResponse {
 }
 
 export interface SyncPublicationsResponse {
+  success: boolean;
   message: string;
-  syncedCount: number;
   newPublications: number;
   updatedPublications: number;
+  totalPublications: number;
 }
 
 // Projet types
@@ -530,4 +560,68 @@ export interface ApiError {
 
 export interface SuccessResponse {
   message: string;
+}
+// Chat types
+export type ChatType = 'direct' | 'group';
+
+export interface UserSimple {
+  id: number;
+  fullName: string;
+  photoDeProfil?: string;
+}
+
+export interface Message {
+  id: number;
+  content: string;
+  timestamp: string;
+  senderId: number;
+  chatId: number;
+  sender?: UserSimple;
+}
+
+export interface Chat {
+  id: number;
+  chat_type?: ChatType;
+  name?: string;
+  avatar?: string;
+  user1Id: number;
+  user2Id: number;
+  user1?: UserSimple;
+  user2?: UserSimple;
+  members?: UserSimple[];
+  messages: Message[];
+}
+
+export interface ChatDetail {
+  id: number;
+  chat_type?: ChatType;
+  name?: string;
+  avatar?: string;
+  user1Id: number;
+  user2Id: number;
+  user1?: UserSimple;
+  user2?: UserSimple;
+  members?: UserSimple[];
+  messages: Message[];
+}
+
+export interface MessageCreateRequest {
+  content: string;
+  receiverId?: number;
+  chatId?: number;
+}
+
+export interface CreateGroupChatRequest {
+  name: string;
+  member_ids: number[];
+  avatar?: string;
+}
+
+export interface AddMembersRequest {
+  member_ids: number[];
+}
+
+export interface ChatListResponse {
+  total: number;
+  chats: Chat[];
 }

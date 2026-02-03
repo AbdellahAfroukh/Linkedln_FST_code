@@ -69,6 +69,16 @@ class Disable2FARequest(BaseModel):
     password: str
 
 
+class OrganisationInfo(BaseModel):
+    """Organization info for user profiles"""
+    id: int
+    nom: str
+    Logo: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class UserResponse(BaseModel):
     id: int
     email: str
@@ -89,6 +99,11 @@ class UserResponse(BaseModel):
     specialiteId: Optional[int] = None
     thematiqueDeRechercheId: Optional[int] = None
     numeroDeSomme: Optional[str] = None
+    university: Optional[OrganisationInfo] = None
+    etablissement: Optional[OrganisationInfo] = None
+    departement: Optional[OrganisationInfo] = None
+    laboratoire: Optional[OrganisationInfo] = None
+    equipe: Optional[OrganisationInfo] = None
 
     @field_serializer('dateDeNaissance')
     def serialize_date(self, value: Optional[date]) -> Optional[str]:
@@ -96,3 +111,28 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class UserSearchResult(BaseModel):
+    """Public user information for search results"""
+    id: int
+    fullName: str
+    email: str
+    user_type: Optional[str] = None
+    profile_completed: bool
+    photoDeProfil: Optional[str] = None
+    grade: Optional[str] = None
+    university: Optional[OrganisationInfo] = None
+    etablissement: Optional[OrganisationInfo] = None
+    departement: Optional[OrganisationInfo] = None
+    laboratoire: Optional[OrganisationInfo] = None
+    equipe: Optional[OrganisationInfo] = None
+
+    class Config:
+        from_attributes = True
+
+
+class UserSearchResponse(BaseModel):
+    """Response for user search"""
+    total: int
+    users: list[UserSearchResult]

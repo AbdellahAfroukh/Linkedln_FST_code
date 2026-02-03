@@ -6,6 +6,17 @@ from models.connection import ConnectionStatus
 class ConnectionCreate(BaseModel):
     receiverId: int
 
+
+class UserBasicInfo(BaseModel):
+    """Basic user info for connection responses"""
+    id: int
+    fullName: str
+    photoDeProfil: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class ConnectionResponse(BaseModel):
     id: int
     status: ConnectionStatus
@@ -13,6 +24,5 @@ class ConnectionResponse(BaseModel):
     acceptedAt: Optional[datetime]
     senderId: int
     receiverId: int
-
-    class Config:
-        from_attributes = True
+    sender: Optional[UserBasicInfo] = None
+    receiver: Optional[UserBasicInfo] = None

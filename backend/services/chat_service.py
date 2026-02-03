@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException, status
 from models.chat import Chat, Message
 from models.user import User
@@ -17,7 +17,10 @@ class ChatService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Receiver not found")
         
         # Look for existing chat between these two users
-        chat = db.query(Chat).filter(
+        chat = db.query(Chat).options(
+            joinedload(Chat.user1),
+            joinedload(Chat.user2)
+        ).filter(
             ((Chat.user1Id == user1.id) & (Chat.user2Id == user2_id)) |
             ((Chat.user1Id == user2_id) & (Chat.user2Id == user1.id))
         ).first()
@@ -34,7 +37,7 @@ class ChatService:
             )
             db.add(chat)
             db.commit()
-            db.refresh(chat)
+            db.refresh(chat, ["user1", "user2"])
         
         return chat
 
@@ -62,7 +65,10 @@ class ChatService:
     @staticmethod
     def get_chat(db: Session, chat_id: int, current_user: User):
         """Get chat details by ID"""
-        chat = db.query(Chat).filter(Chat.id == chat_id).first()
+        chat = db.query(Chat).options(
+            joinedload(Chat.user1),
+            joinedload(Chat.user2)
+        ).filter(Chat.id == chat_id).first()
         if not chat:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found")
         
@@ -75,7 +81,10 @@ class ChatService:
     @staticmethod
     def list_user_chats(db: Session, current_user: User):
         """List all chats for the current user"""
-        chats = db.query(Chat).filter(
+        chats = db.query(Chat).options(
+            joinedload(Chat.user1),
+            joinedload(Chat.user2)
+        ).filter(
             (Chat.user1Id == current_user.id) | (Chat.user2Id == current_user.id)
         ).all()
         return chats
@@ -98,3 +107,5 @@ class ChatService:
         db.delete(chat)
         db.commit()
         return {"message": "Chat deleted successfully"}
+
+
