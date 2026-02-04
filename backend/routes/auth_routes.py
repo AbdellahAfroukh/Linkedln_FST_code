@@ -19,6 +19,7 @@ from schemas.auth_schemas import (
 from dependencies import get_current_user, get_current_active_user
 from models.user import User, UserType
 from models.organisation import Specialite, ThematiqueDeRecherche
+from services.file_utils import delete_file_from_url
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -161,7 +162,10 @@ def complete_profile(
     if data.dateDeNaissance is not None:
         current_user.dateDeNaissance = data.dateDeNaissance
     if data.photoDeProfil is not None:
+        previous_photo = current_user.photoDeProfil
         current_user.photoDeProfil = data.photoDeProfil
+        if previous_photo and previous_photo != data.photoDeProfil:
+            delete_file_from_url(previous_photo)
     if data.universityId is not None:
         current_user.universityId = data.universityId
     if data.etablissementId is not None:
@@ -457,6 +461,66 @@ def search_users(
             func.lower(User.email).like(func.lower(search_term))
         )
     )
+    
+    total = query.count()
+    users = query.offset(skip).limit(limit).all()
+    
+    return UserSearchResponse(
+        total=total,
+        users=[UserSearchResult.model_validate(user) for user in users]
+    )
+
+
+@router.get("/users/filter", response_model=UserSearchResponse)
+def filter_users(
+    university_id: int | None = None,
+    etablissement_id: int | None = None,
+    departement_id: int | None = None,
+    laboratoire_id: int | None = None,
+    equipe_id: int | None = None,
+    user_type: str | None = None,
+    skip: int = 0,
+    limit: int = 50,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Filter users by organizational affiliations and user type (available to all authenticated users)"""
+    from sqlalchemy import and_
+    from sqlalchemy.orm import joinedload
+    
+    # Start with base query
+    query = db.query(User).options(
+        joinedload(User.university),
+        joinedload(User.etablissement),
+        joinedload(User.departement),
+        joinedload(User.laboratoire),
+        joinedload(User.equipe)
+    )
+    
+    # Apply filters
+    filters = []
+    
+    if university_id:
+        filters.append(User.universityId == university_id)
+    
+    if etablissement_id:
+        filters.append(User.etablissementId == etablissement_id)
+    
+    if departement_id:
+        filters.append(User.departementId == departement_id)
+    
+    if laboratoire_id:
+        filters.append(User.laboratoireId == laboratoire_id)
+    
+    if equipe_id:
+        filters.append(User.equipeId == equipe_id)
+    
+    if user_type:
+        filters.append(User.user_type == user_type)
+    
+    # Combine all filters with AND
+    if filters:
+        query = query.filter(and_(*filters))
     
     total = query.count()
     users = query.offset(skip).limit(limit).all()

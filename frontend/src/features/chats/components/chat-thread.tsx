@@ -11,6 +11,7 @@ import { chatsApi } from "@/api/chats";
 import { Chat, Message } from "@/types";
 import { format } from "date-fns";
 import { FileUpload } from "@/components/file-upload";
+import { ImagePreviewDialog } from "@/components/image-preview-dialog";
 import { transformUrl } from "@/lib/url-utils";
 
 interface ChatThreadProps {
@@ -27,6 +28,7 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
   const [attachmentUrl, setAttachmentUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -45,8 +47,6 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
 
   useEffect(() => {
     if (!chat) return;
-    console.log("Chat selected:", chat);
-    console.log("Current user:", currentUser);
     setShouldAutoScroll(true); // Auto-scroll when switching chats
     loadMessages(true);
 
@@ -109,16 +109,8 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
         (msg) => msg.is_read === 0 && msg.senderId !== currentUser?.id,
       );
 
-      console.log(
-        "Has unread messages:",
-        hasUnread,
-        "Total messages:",
-        data.length,
-      );
-
       // If there are unread messages, mark them as read
       if (hasUnread) {
-        console.log("Marking chat as read...");
         await chatsApi.markChatAsRead(chat.id);
         // Update local state: mark messages from other user as read
         setMessages((prevMessages) =>
@@ -128,7 +120,6 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
         );
         // Invalidate the chats query to update the notification badge
         queryClient.invalidateQueries({ queryKey: ["chats"] });
-        console.log("Chat marked as read");
       }
     } catch (error) {
       console.error("Failed to load messages:", error);
@@ -193,9 +184,7 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
 
   const getOtherUserName = (): string => {
     if (!chat || !currentUser) return "";
-    console.log("Getting other user name. Chat:", chat);
     const otherUser = chat.user1Id === currentUser.id ? chat.user2 : chat.user1;
-    console.log("Other user:", otherUser);
     return otherUser?.fullName || "User";
   };
 
@@ -248,179 +237,195 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
   }
 
   return (
-    <Card className="flex-1 flex flex-col">
-      <CardHeader className="border-b">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar>
-              <AvatarImage
-                src={getOtherUserAvatar()}
-                alt={getOtherUserName()}
-              />
-              <AvatarFallback>{getOtherUserName().charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div>
-              <CardTitle className="text-lg">{getOtherUserName()}</CardTitle>
-            </div>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="flex-1 flex flex-col overflow-hidden p-0">
-        {isLoading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <>
-            <div
-              ref={scrollContainerRef}
-              onScroll={handleScroll}
-              className="flex-1 overflow-y-auto"
-            >
-              <div className="p-4 space-y-4">
-                {messages.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    No messages yet. Start the conversation!
-                  </p>
-                ) : (
-                  messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${
-                        message.senderId === currentUser?.id
-                          ? "justify-end"
-                          : "justify-start"
-                      }`}
-                    >
-                      <div
-                        className={`flex gap-2 max-w-xs ${
-                          message.senderId === currentUser?.id
-                            ? "flex-row-reverse"
-                            : ""
-                        }`}
-                      >
-                        <Avatar className="h-8 w-8 flex-shrink-0">
-                          <AvatarImage
-                            src={transformUrl(message.sender?.photoDeProfil)}
-                            alt={message.sender?.fullName}
-                          />
-                          <AvatarFallback>
-                            {message.sender?.fullName.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="relative group">
-                          <div
-                            className={`rounded-lg px-4 py-2 ${
-                              message.senderId === currentUser?.id
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted"
-                            }`}
-                          >
-                            {chat.chat_type === "group" &&
-                              message.senderId !== currentUser?.id && (
-                                <p className="text-xs font-semibold mb-1 opacity-70">
-                                  {message.sender?.fullName}
-                                </p>
-                              )}
-                            {message.content && (
-                              <p className="text-sm break-words">
-                                {message.content}
-                              </p>
-                            )}
-                            {message.attachment && (
-                              <div className="mt-2">
-                                {isImageUrl(message.attachment) ? (
-                                  <img
-                                    src={transformUrl(message.attachment)}
-                                    alt="Attachment"
-                                    className="max-h-64 rounded border object-contain"
-                                    onError={(e) => {
-                                      (
-                                        e.target as HTMLImageElement
-                                      ).style.display = "none";
-                                    }}
-                                  />
-                                ) : (
-                                  <a
-                                    href={transformUrl(message.attachment)}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    download
-                                    className="inline-flex items-center gap-3 p-3 bg-background/70 border rounded-lg hover:bg-background/90 transition"
-                                  >
-                                    <span className="text-2xl">
-                                      {getFileIcon(message.attachment)}
-                                    </span>
-                                    <div className="flex-1">
-                                      <p className="text-xs font-medium">
-                                        {getFileName(message.attachment)}
-                                      </p>
-                                      <p className="text-[10px] opacity-70">
-                                        Click to download
-                                      </p>
-                                    </div>
-                                    <span className="opacity-60">↓</span>
-                                  </a>
-                                )}
-                              </div>
-                            )}
-                            <p className="text-xs opacity-70 mt-1">
-                              {format(new Date(message.timestamp), "HH:mm")}
-                            </p>
-                          </div>
-                          {message.senderId === currentUser?.id && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="absolute -right-10 top-1/2 -translate-y-1/2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => handleDeleteMessage(message.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-                <div ref={scrollRef} />
+    <>
+      <Card className="flex-1 flex flex-col">
+        <CardHeader className="border-b">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Avatar>
+                <AvatarImage
+                  src={getOtherUserAvatar()}
+                  alt={getOtherUserName()}
+                />
+                <AvatarFallback>{getOtherUserName().charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div>
+                <CardTitle className="text-lg">{getOtherUserName()}</CardTitle>
               </div>
             </div>
+          </div>
+        </CardHeader>
 
-            <div className="border-t p-4 space-y-3">
-              <FileUpload
-                label="Attachment (Image or Document)"
-                type="any"
-                currentUrl={attachmentUrl}
-                onUploadSuccess={(url) => setAttachmentUrl(url)}
-              />
-              <form onSubmit={handleSendMessage} className="flex gap-2">
-                <Input
-                  placeholder="Type a message..."
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
-                  disabled={isSending}
-                  className="flex-1"
-                />
-                <Button
-                  type="submit"
-                  disabled={
-                    isSending || (!messageInput.trim() && !attachmentUrl.trim())
-                  }
-                  size="icon"
-                >
-                  {isSending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
-              </form>
+        <CardContent className="flex-1 flex flex-col overflow-hidden p-0">
+          {isLoading ? (
+            <div className="flex-1 flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+          ) : (
+            <>
+              <div
+                ref={scrollContainerRef}
+                onScroll={handleScroll}
+                className="flex-1 overflow-y-auto"
+              >
+                <div className="p-4 space-y-4">
+                  {messages.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      No messages yet. Start the conversation!
+                    </p>
+                  ) : (
+                    messages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`flex ${
+                          message.senderId === currentUser?.id
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
+                      >
+                        <div
+                          className={`flex gap-2 max-w-xs ${
+                            message.senderId === currentUser?.id
+                              ? "flex-row-reverse"
+                              : ""
+                          }`}
+                        >
+                          <Avatar className="h-8 w-8 flex-shrink-0">
+                            <AvatarImage
+                              src={transformUrl(message.sender?.photoDeProfil)}
+                              alt={message.sender?.fullName}
+                            />
+                            <AvatarFallback>
+                              {message.sender?.fullName.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="relative group">
+                            <div
+                              className={`rounded-lg px-4 py-2 ${
+                                message.senderId === currentUser?.id
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted"
+                              }`}
+                            >
+                              {chat.chat_type === "group" &&
+                                message.senderId !== currentUser?.id && (
+                                  <p className="text-xs font-semibold mb-1 opacity-70">
+                                    {message.sender?.fullName}
+                                  </p>
+                                )}
+                              {message.content && (
+                                <p className="text-sm break-words">
+                                  {message.content}
+                                </p>
+                              )}
+                              {message.attachment && (
+                                <div className="mt-2">
+                                  {isImageUrl(message.attachment) ? (
+                                    <img
+                                      src={transformUrl(message.attachment)}
+                                      alt="Attachment"
+                                      className="max-h-64 rounded border object-contain cursor-pointer"
+                                      onClick={() =>
+                                        setPreviewImage(
+                                          transformUrl(message.attachment),
+                                        )
+                                      }
+                                      onError={(e) => {
+                                        (
+                                          e.target as HTMLImageElement
+                                        ).style.display = "none";
+                                      }}
+                                    />
+                                  ) : (
+                                    <a
+                                      href={transformUrl(message.attachment)}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      download
+                                      className="inline-flex items-center gap-3 p-3 bg-background/70 border rounded-lg hover:bg-background/90 transition"
+                                    >
+                                      <span className="text-2xl">
+                                        {getFileIcon(message.attachment)}
+                                      </span>
+                                      <div className="flex-1">
+                                        <p className="text-xs font-medium">
+                                          {getFileName(message.attachment)}
+                                        </p>
+                                        <p className="text-[10px] opacity-70">
+                                          Click to download
+                                        </p>
+                                      </div>
+                                      <span className="opacity-60">↓</span>
+                                    </a>
+                                  )}
+                                </div>
+                              )}
+                              <p className="text-xs opacity-70 mt-1">
+                                {format(new Date(message.timestamp), "HH:mm")}
+                              </p>
+                            </div>
+                            {message.senderId === currentUser?.id && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="absolute -right-10 top-1/2 -translate-y-1/2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => handleDeleteMessage(message.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  <div ref={scrollRef} />
+                </div>
+              </div>
+
+              <div className="border-t p-4 space-y-3">
+                <FileUpload
+                  label="Attachment (Image or Document)"
+                  type="any"
+                  currentUrl={attachmentUrl}
+                  onUploadSuccess={(url) => setAttachmentUrl(url)}
+                />
+                <form onSubmit={handleSendMessage} className="flex gap-2">
+                  <Input
+                    placeholder="Type a message..."
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    disabled={isSending}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="submit"
+                    disabled={
+                      isSending ||
+                      (!messageInput.trim() && !attachmentUrl.trim())
+                    }
+                    size="icon"
+                  >
+                    {isSending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </form>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+      <ImagePreviewDialog
+        open={!!previewImage}
+        src={previewImage}
+        alt="Chat attachment"
+        onOpenChange={(open) => {
+          if (!open) setPreviewImage(null);
+        }}
+      />
+    </>
   );
 }

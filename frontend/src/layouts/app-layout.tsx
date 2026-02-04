@@ -49,6 +49,7 @@ export function AppLayout() {
     { to: "/dashboard", icon: Home, label: "Dashboard" },
     { to: "/posts", icon: FileText, label: "My Posts" },
     { to: "/feed", icon: Rss, label: "Feed" },
+    { to: "/people", icon: Users, label: "Find People" },
     { to: "/connections", icon: Users, label: "Connections" },
     { to: "/chats", icon: MessageSquare, label: "Messages" },
     { to: "/projets", icon: FolderKanban, label: "Projects" },

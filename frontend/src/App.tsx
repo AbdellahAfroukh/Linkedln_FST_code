@@ -31,6 +31,7 @@ import { CVPage } from "./features/cv/pages/cv-page";
 
 // Connections
 import { ConnectionsPage } from "./features/connections/pages/connections-page";
+import { PeoplePage } from "./features/connections/pages/people-page";
 
 // Chats
 import { ChatsPage } from "./features/chats/pages/chats-page";
@@ -69,6 +70,7 @@ function App() {
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/posts" element={<PostsFeedPage />} />
                 <Route path="/feed" element={<FeedPage />} />
+                <Route path="/people" element={<PeoplePage />} />
                 <Route path="/cv" element={<CVPage />} />
                 <Route path="/connections" element={<ConnectionsPage />} />
                 <Route path="/chats" element={<ChatsPage />} />

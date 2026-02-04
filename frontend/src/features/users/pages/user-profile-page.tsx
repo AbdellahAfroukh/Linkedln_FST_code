@@ -1,9 +1,11 @@
 import { Link, useParams } from "react-router-dom";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { usersApi } from "@/api/users";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { transformUrl } from "@/lib/url-utils";
+import { ImagePreviewDialog } from "@/components/image-preview-dialog";
 
 export function UserProfilePage() {
   const { userId } = useParams();
@@ -14,6 +16,7 @@ export function UserProfilePage() {
     queryFn: () => usersApi.getProfile(numericId),
     enabled: Number.isFinite(numericId),
   });
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const user = data;
 
@@ -45,7 +48,10 @@ export function UserProfilePage() {
                     <img
                       src={transformUrl(user.photoDeProfil)}
                       alt={user.fullName}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover cursor-pointer"
+                      onClick={() =>
+                        setPreviewImage(transformUrl(user.photoDeProfil))
+                      }
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = "none";
                       }}
@@ -126,6 +132,14 @@ export function UserProfilePage() {
           )}
         </CardContent>
       </Card>
+      <ImagePreviewDialog
+        open={!!previewImage}
+        src={previewImage}
+        alt={user?.fullName || "Profile picture"}
+        onOpenChange={(open) => {
+          if (!open) setPreviewImage(null);
+        }}
+      />
     </div>
   );
 }

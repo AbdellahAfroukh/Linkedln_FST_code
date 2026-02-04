@@ -6,6 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/features/auth/hooks/use-auth";
+import { useAuthStore } from "@/store/auth";
 import { chatsApi } from "@/api/chats";
 import { Chat } from "@/types";
 import { transformUrl } from "@/lib/url-utils";
@@ -17,33 +18,42 @@ interface ChatListProps {
 
 export function ChatList({ onSelectChat, selectedChat }: ChatListProps) {
   const { user: currentUser } = useAuth();
+  const { user: storeUser } = useAuthStore();
   const [chats, setChats] = useState<Chat[]>([]);
   const [filteredChats, setFilteredChats] = useState<Chat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    loadChats();
-    const interval = setInterval(loadChats, 30000); // Poll every 30 seconds
+    const loadInitial = async () => {
+      await loadChats();
+      setIsInitialized(true);
+    };
+    loadInitial();
+    const interval = setInterval(loadChats, 1000); // Poll every 1 second for real-time unread updates
     return () => clearInterval(interval);
   }, []);
 
   const loadChats = async () => {
     try {
-      setIsLoading(true);
       const data = await chatsApi.list();
       setChats(data);
       setFilteredChats(data);
     } catch (error) {
       console.error("Failed to load chats:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load chats",
-        variant: "destructive",
-      });
+      if (isInitialized) {
+        toast({
+          title: "Error",
+          description: "Failed to load chats",
+          variant: "destructive",
+        });
+      }
     } finally {
-      setIsLoading(false);
+      if (!isInitialized) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -79,6 +89,14 @@ export function ChatList({ onSelectChat, selectedChat }: ChatListProps) {
   const getDisplayInitial = (chat: Chat): string => {
     const name = getDisplayName(chat);
     return name.charAt(0).toUpperCase();
+  };
+
+  const getUnreadCount = (chat: Chat): number => {
+    if (!chat.messages || !storeUser) return 0;
+    // Count unread messages from OTHER users (not sent by current user)
+    return chat.messages.filter(
+      (msg: any) => msg.is_read === 0 && msg.senderId !== storeUser.id,
+    ).length;
   };
 
   const handleDeleteChat = async (e: React.MouseEvent, chatId: number) => {
@@ -124,41 +142,53 @@ export function ChatList({ onSelectChat, selectedChat }: ChatListProps) {
       ) : (
         <ScrollArea className="h-[600px] pr-4">
           <div className="space-y-2">
-            {filteredChats.map((chat) => (
-              <div
-                key={chat.id}
-                className={`group flex items-center gap-3 p-3 rounded-lg cursor-pointer transition ${
-                  selectedChat?.id === chat.id
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-accent"
-                }`}
-                onClick={() => onSelectChat(chat)}
-              >
-                <Avatar>
-                  <AvatarImage
-                    src={getDisplayAvatar(chat)}
-                    alt={getDisplayName(chat)}
-                  />
-                  <AvatarFallback>{getDisplayInitial(chat)}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{getDisplayName(chat)}</p>
-                  {chat.messages && chat.messages.length > 0 && (
-                    <p className="text-xs opacity-70 truncate">
-                      {chat.messages[chat.messages.length - 1].content}
-                    </p>
-                  )}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => handleDeleteChat(e, chat.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
+            {filteredChats.map((chat) => {
+              const unreadCount = getUnreadCount(chat);
+              return (
+                <div
+                  key={chat.id}
+                  className={`group flex items-center gap-3 p-3 rounded-lg cursor-pointer transition ${
+                    selectedChat?.id === chat.id
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-accent"
+                  }`}
+                  onClick={() => onSelectChat(chat)}
                 >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
+                  <div className="relative">
+                    <Avatar>
+                      <AvatarImage
+                        src={getDisplayAvatar(chat)}
+                        alt={getDisplayName(chat)}
+                      />
+                      <AvatarFallback>{getDisplayInitial(chat)}</AvatarFallback>
+                    </Avatar>
+                    {unreadCount > 0 && (
+                      <div className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">
+                      {getDisplayName(chat)}
+                    </p>
+                    {chat.messages && chat.messages.length > 0 && (
+                      <p className="text-xs opacity-70 truncate">
+                        {chat.messages[chat.messages.length - 1].content}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => handleDeleteChat(e, chat.id)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              );
+            })}
           </div>
         </ScrollArea>
       )}

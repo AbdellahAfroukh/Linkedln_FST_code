@@ -10,7 +10,6 @@ export const API_BASE_URL =
     : `http://${window.location.hostname}:8000`;
 
 // Log the API URL for debugging
-console.log('API Base URL:', API_BASE_URL);
 
 // Create axios instance
 export const apiClient = axios.create({

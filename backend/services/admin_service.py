@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, or_
 from fastapi import HTTPException, status
+from services.file_utils import delete_file_from_url
 from models.organisation import (
     University, Etablissement, Departement, Laboratoire, 
     Equipe, Specialite, ThematiqueDeRecherche
@@ -520,6 +521,8 @@ class AdminService:
     def delete_post(db: Session, post_id: int) -> dict:
         """Delete a post (admin moderation)"""
         post = AdminService.get_post_by_id(db, post_id)
+        if post.attachement:
+            delete_file_from_url(post.attachement)
         db.delete(post)
         db.commit()
         
@@ -529,7 +532,11 @@ class AdminService:
     def delete_user_posts(db: Session, user_id: int) -> dict:
         """Delete all posts from a specific user"""
         user = AdminService.get_user_by_id(db, user_id)
-        
+        posts = db.query(Post).filter(Post.userId == user_id).all()
+        for post in posts:
+            if post.attachement:
+                delete_file_from_url(post.attachement)
+
         deleted_count = db.query(Post).filter(Post.userId == user_id).delete()
         db.commit()
         

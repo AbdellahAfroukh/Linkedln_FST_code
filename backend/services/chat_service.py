@@ -3,6 +3,7 @@ from fastapi import HTTPException, status
 from models.chat import Chat, Message
 from models.user import User
 from datetime import datetime, timezone
+from services.file_utils import delete_file_from_url
 
 class ChatService:
     @staticmethod
@@ -140,6 +141,9 @@ class ChatService:
         if message.senderId != current_user.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this message")
         
+        if message.attachment:
+            delete_file_from_url(message.attachment)
+
         db.delete(message)
         db.commit()
         return {"message": "Message deleted successfully"}
@@ -148,6 +152,10 @@ class ChatService:
     def delete_chat(db: Session, chat_id: int, current_user: User):
         """Delete a chat (both users' messages will be deleted due to cascade)"""
         chat = ChatService.get_chat(db, chat_id, current_user)
+        messages = db.query(Message).filter(Message.chatId == chat_id).all()
+        for message in messages:
+            if message.attachment:
+                delete_file_from_url(message.attachment)
         db.delete(chat)
         db.commit()
         return {"message": "Chat deleted successfully"}

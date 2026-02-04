@@ -21,5 +21,7 @@ lxml
 # PDF Generation
 reportlab
 
+# Malware Detection (pure Python, no C libraries required)
+
 pydantic-settings
 argon2-cffi

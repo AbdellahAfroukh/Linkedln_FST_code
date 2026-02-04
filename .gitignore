@@ -19,4 +19,8 @@
 # Ignore virtual environments everywhere
 **/venv/
 **/env/
+
+# Ignore uploads contents but keep folders
+**/uploads/*
+**/uploads/**
     

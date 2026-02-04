@@ -4,6 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { postsApi } from "@/api/posts";
 import { useAuthStore } from "@/store/auth";
 import { toast } from "sonner";
@@ -11,6 +17,7 @@ import type { ReactionType } from "@/types";
 import { transformUrl } from "@/lib/url-utils";
 import { FileUpload } from "@/components/file-upload";
 import { Trash2 } from "lucide-react";
+import { ImagePreviewDialog } from "@/components/image-preview-dialog";
 
 const REACTIONS: { label: string; value: ReactionType }[] = [
   { label: "👍 Like", value: "like" },
@@ -26,10 +33,14 @@ export function PostsFeedPage() {
   const queryClient = useQueryClient();
   const [content, setContent] = useState("");
   const [attachement, setAttachement] = useState("");
-  const [isPublic, setIsPublic] = useState(true);
+  const [isPublic, setIsPublic] = useState(false);
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>(
     {},
   );
+  const [selectedPostForComments, setSelectedPostForComments] = useState<
+    number | null
+  >(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const { data: myPostsData, isLoading: myPostsLoading } = useQuery({
     queryKey: ["posts", "my-posts"],
@@ -275,7 +286,12 @@ export function PostsFeedPage() {
                         <img
                           src={transformUrl(post.user.photoDeProfil)}
                           alt={post.user.fullName}
-                          className="h-full w-full object-cover"
+                          className="h-full w-full object-cover cursor-pointer"
+                          onClick={() =>
+                            setPreviewImage(
+                              transformUrl(post.user.photoDeProfil),
+                            )
+                          }
                           onError={(e) => {
                             (e.target as HTMLImageElement).style.display =
                               "none";
@@ -371,7 +387,10 @@ export function PostsFeedPage() {
                       <img
                         src={transformUrl(post.attachement)}
                         alt="Post attachment"
-                        className="w-full max-h-96 rounded-lg border object-contain bg-gray-50"
+                        className="w-full max-h-96 rounded-lg border object-contain bg-gray-50 cursor-pointer"
+                        onClick={() =>
+                          setPreviewImage(transformUrl(post.attachement))
+                        }
                         onError={(e) => {
                           console.error(
                             "Failed to load image:",
@@ -498,7 +517,10 @@ export function PostsFeedPage() {
 
                 {post.comments.length > 0 && (
                   <div className="space-y-2">
-                    {post.comments.map((comment) => (
+                    <div className="text-sm text-muted-foreground">
+                      {post.comments.length} comments
+                    </div>
+                    {post.comments.slice(0, 2).map((comment) => (
                       <div
                         key={comment.id}
                         className="bg-gray-50 rounded-md p-3 group relative"
@@ -524,6 +546,16 @@ export function PostsFeedPage() {
                         )}
                       </div>
                     ))}
+                    {post.comments.length > 2 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedPostForComments(post.id)}
+                        className="w-full"
+                      >
+                        View all {post.comments.length} comments
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
@@ -531,6 +563,57 @@ export function PostsFeedPage() {
           })}
         </CardContent>
       </Card>
+      <ImagePreviewDialog
+        open={!!previewImage}
+        src={previewImage}
+        alt="Preview"
+        onOpenChange={(open) => {
+          if (!open) setPreviewImage(null);
+        }}
+      />
+
+      <Dialog
+        open={selectedPostForComments !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedPostForComments(null);
+        }}
+      >
+        <DialogContent className="max-w-2xl h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>All Comments</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto pr-4">
+            <div className="space-y-3">
+              {myPosts
+                .find((post) => post.id === selectedPostForComments)
+                ?.comments.map((comment) => (
+                  <div
+                    key={comment.id}
+                    className="bg-gray-50 rounded-md p-3 group relative"
+                  >
+                    <div className="text-sm font-medium">
+                      {comment.user.fullName}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {new Date(comment.timestamp).toLocaleString()}
+                    </div>
+                    <p className="text-sm mt-1">{comment.content}</p>
+                    {comment.userId === user?.id && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteCommentMutation.mutate(comment.id)}
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 p-0"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

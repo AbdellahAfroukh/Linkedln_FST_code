@@ -7,6 +7,7 @@ from models.google_scholar import Publication
 from fastapi import HTTPException, status
 from typing import List, Dict, Optional
 from datetime import datetime, timezone
+from services.file_utils import delete_file_from_url
 
 
 class PostService:
@@ -108,6 +109,9 @@ class PostService:
             if publication:
                 publication.isPosted = False
         
+        if post.attachement:
+            delete_file_from_url(post.attachement)
+
         db.delete(post)
         db.commit()
         

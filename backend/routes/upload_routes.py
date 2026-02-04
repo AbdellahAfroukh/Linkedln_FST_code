@@ -6,6 +6,7 @@ import uuid
 from pathlib import Path
 from dependencies import get_db, get_current_user
 from models.user import User
+from services.malware_detection import detect_malware, get_file_type_category
 
 router = APIRouter(prefix="/upload", tags=["upload"])
 
@@ -24,7 +25,7 @@ async def upload_image(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user)
 ):
-    """Upload an image file"""
+    """Upload an image file with malware detection"""
     # Check file extension
     file_ext = Path(file.filename).suffix.lower()
     if file_ext not in ALLOWED_IMAGES:
@@ -37,13 +38,31 @@ async def upload_image(
     unique_filename = f"{uuid.uuid4()}{file_ext}"
     file_path = UPLOAD_DIR / unique_filename
     
-    # Save file
+    # Save file temporarily
     try:
         content = await file.read()
         with open(file_path, "wb") as f:
             f.write(content)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+    
+    # Run malware detection
+    try:
+        file_type = get_file_type_category(file_ext)
+        is_malware, reason = await detect_malware(file_path, file_type)
+        
+        if is_malware:
+            # Delete suspicious file
+            file_path.unlink(missing_ok=True)
+            raise HTTPException(
+                status_code=400,
+                detail=f"File failed malware detection: {reason}"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Log error but don't block upload if detection fails
+        print(f"Malware detection error: {e}")
     
     # Return URL
     return {
@@ -56,7 +75,7 @@ async def upload_document(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user)
 ):
-    """Upload a document file"""
+    """Upload a document file with malware detection"""
     # Check file extension
     file_ext = Path(file.filename).suffix.lower()
     if file_ext not in ALLOWED_DOCUMENTS:
@@ -69,13 +88,31 @@ async def upload_document(
     unique_filename = f"{uuid.uuid4()}{file_ext}"
     file_path = UPLOAD_DIR / unique_filename
     
-    # Save file
+    # Save file temporarily
     try:
         content = await file.read()
         with open(file_path, "wb") as f:
             f.write(content)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+    
+    # Run malware detection
+    try:
+        file_type = get_file_type_category(file_ext)
+        is_malware, reason = await detect_malware(file_path, file_type)
+        
+        if is_malware:
+            # Delete suspicious file
+            file_path.unlink(missing_ok=True)
+            raise HTTPException(
+                status_code=400,
+                detail=f"File failed malware detection: {reason}"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Log error but don't block upload if detection fails
+        print(f"Malware detection error: {e}")
     
     # Return URL
     return {
