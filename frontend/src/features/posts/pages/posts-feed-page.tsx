@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import type { ReactionType } from "@/types";
 import { transformUrl } from "@/lib/url-utils";
 import { FileUpload } from "@/components/file-upload";
+import { Trash2 } from "lucide-react";
 
 const REACTIONS: { label: string; value: ReactionType }[] = [
   { label: "👍 Like", value: "like" },
@@ -87,6 +88,16 @@ export function PostsFeedPage() {
       queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
     },
     onError: () => toast.error("Failed to add comment"),
+  });
+
+  const deleteCommentMutation = useMutation({
+    mutationFn: (commentId: number) => postsApi.deleteComment(commentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posts", "my-posts"] });
+      queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
+      toast.success("Comment deleted");
+    },
+    onError: () => toast.error("Failed to delete comment"),
   });
 
   const reactMutation = useMutation({
@@ -490,7 +501,7 @@ export function PostsFeedPage() {
                     {post.comments.map((comment) => (
                       <div
                         key={comment.id}
-                        className="bg-gray-50 rounded-md p-3"
+                        className="bg-gray-50 rounded-md p-3 group relative"
                       >
                         <div className="text-sm font-medium">
                           {comment.user.fullName}
@@ -499,6 +510,18 @@ export function PostsFeedPage() {
                           {new Date(comment.timestamp).toLocaleString()}
                         </div>
                         <p className="text-sm mt-1">{comment.content}</p>
+                        {comment.userId === user?.id && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              deleteCommentMutation.mutate(comment.id)
+                            }
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 p-0"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
                       </div>
                     ))}
                   </div>

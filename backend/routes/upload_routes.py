@@ -10,7 +10,8 @@ from models.user import User
 router = APIRouter(prefix="/upload", tags=["upload"])
 
 # Create uploads directory if it doesn't exist
-UPLOAD_DIR = Path("uploads")
+# Use absolute path based on this file's location to ensure it works regardless of CWD
+UPLOAD_DIR = Path(__file__).parent.parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 # Allowed file types

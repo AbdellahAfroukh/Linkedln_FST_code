@@ -14,6 +14,7 @@ export interface User {
   dateDeNaissance?: string;
   photoDeProfil?: string;
   numeroDeSomme?: string;
+  googleScholarId?: string;
   universityId?: number;
   etablissementId?: number;
   departementId?: number;
@@ -26,6 +27,8 @@ export interface User {
   departement?: Organisation;
   laboratoire?: Organisation;
   equipe?: Organisation;
+  specialite?: Organisation[];
+  thematiqueDeRecherche?: Organisation[];
 }
 
 export interface UserBasicInfo {

@@ -25,10 +25,10 @@ import {
   UserPlus,
   UserX,
   Search,
-  Mail,
   MessageCircle,
 } from "lucide-react";
 import type { UserDetailResponse } from "@/types";
+import { ProfileTabsContent } from "../components/profile-tabs-content";
 
 export function ConnectionsPage() {
   const navigate = useNavigate();
@@ -207,7 +207,7 @@ export function ConnectionsPage() {
                   >
                     <div className="flex items-center gap-3">
                       <Avatar className="h-12 w-12">
-                        <AvatarImage src={user.photoDeProfil} />
+                        <AvatarImage src={transformUrl(user.photoDeProfil)} />
                         <AvatarFallback>
                           {getInitials(user.fullName)}
                         </AvatarFallback>
@@ -296,7 +296,7 @@ export function ConnectionsPage() {
               >
                 <div className="flex items-center gap-3">
                   <Avatar className="h-12 w-12">
-                    <AvatarImage src={sender?.photoDeProfil} />
+                    <AvatarImage src={transformUrl(sender?.photoDeProfil)} />
                     <AvatarFallback>
                       {sender ? getInitials(sender.fullName) : "?"}
                     </AvatarFallback>
@@ -410,202 +410,10 @@ export function ConnectionsPage() {
           </DialogHeader>
           {selectedUser && (
             <>
-              <ScrollArea className="flex-1 px-6 overflow-y-auto">
-                <div className="space-y-6 pb-4">
-                  <div className="flex items-start gap-4">
-                    <Avatar className="h-20 w-20">
-                      <AvatarImage src={selectedUser.photoDeProfil} />
-                      <AvatarFallback className="text-2xl">
-                        {getInitials(selectedUser.fullName)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <h2 className="text-2xl font-bold">
-                        {selectedUser.fullName}
-                      </h2>
-                      {selectedUser.grade && (
-                        <p className="text-lg text-muted-foreground">
-                          {selectedUser.grade}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-2 mt-2">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                        <p className="text-sm">{selectedUser.email}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {selectedUser.nom && selectedUser.prenom && (
-                      <div>
-                        <Label className="text-muted-foreground">
-                          Full Name
-                        </Label>
-                        <p className="font-medium">
-                          {selectedUser.prenom} {selectedUser.nom}
-                        </p>
-                      </div>
-                    )}
-                    {selectedUser.dateDeNaissance && (
-                      <div>
-                        <Label className="text-muted-foreground">
-                          Date of Birth
-                        </Label>
-                        <p className="font-medium">
-                          {selectedUser.dateDeNaissance}
-                        </p>
-                      </div>
-                    )}
-                    {selectedUser.numeroDeSomme && (
-                      <div>
-                        <Label className="text-muted-foreground">
-                          Numero de Somme
-                        </Label>
-                        <p className="font-medium">
-                          {selectedUser.numeroDeSomme}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Organizations */}
-                  <div className="space-y-3 pt-4 border-t">
-                    <Label className="text-base font-semibold">
-                      Organizations
-                    </Label>
-                    <div className="space-y-2">
-                      {selectedUser.university && (
-                        <div className="flex items-center gap-3 p-2 bg-muted rounded">
-                          {selectedUser.university.Logo ? (
-                            <img
-                              src={selectedUser.university.Logo}
-                              alt={selectedUser.university.nom}
-                              className="h-10 w-10 rounded object-cover"
-                            />
-                          ) : (
-                            <div className="h-10 w-10 bg-primary/20 rounded flex items-center justify-center text-xs font-bold">
-                              U
-                            </div>
-                          )}
-                          <div>
-                            <p className="text-sm font-medium">University</p>
-                            <p className="text-xs text-muted-foreground">
-                              {selectedUser.university.nom}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      {selectedUser.etablissement && (
-                        <div className="flex items-center gap-3 p-2 bg-muted rounded">
-                          {selectedUser.etablissement.Logo ? (
-                            <img
-                              src={selectedUser.etablissement.Logo}
-                              alt={selectedUser.etablissement.nom}
-                              className="h-10 w-10 rounded object-cover"
-                            />
-                          ) : (
-                            <div className="h-10 w-10 bg-blue-500/20 rounded flex items-center justify-center text-xs font-bold">
-                              E
-                            </div>
-                          )}
-                          <div>
-                            <p className="text-sm font-medium">Etablissement</p>
-                            <p className="text-xs text-muted-foreground">
-                              {selectedUser.etablissement.nom}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      {selectedUser.departement && (
-                        <div className="flex items-center gap-3 p-2 bg-muted rounded">
-                          <div className="h-10 w-10 bg-green-500/20 rounded flex items-center justify-center text-xs font-bold">
-                            D
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium">Departement</p>
-                            <p className="text-xs text-muted-foreground">
-                              {selectedUser.departement.nom}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      {selectedUser.laboratoire && (
-                        <div className="flex items-center gap-3 p-2 bg-muted rounded">
-                          <div className="h-10 w-10 bg-purple-500/20 rounded flex items-center justify-center text-xs font-bold">
-                            L
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium">Laboratory</p>
-                            <p className="text-xs text-muted-foreground">
-                              {selectedUser.laboratoire.nom}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      {selectedUser.equipe && (
-                        <div className="flex items-center gap-3 p-2 bg-muted rounded">
-                          <div className="h-10 w-10 bg-orange-500/20 rounded flex items-center justify-center text-xs font-bold">
-                            T
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium">Team</p>
-                            <p className="text-xs text-muted-foreground">
-                              {selectedUser.equipe.nom}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      {selectedUser.specialite &&
-                        selectedUser.specialite.length > 0 && (
-                          <div className="p-3 bg-muted rounded">
-                            <p className="text-sm font-medium mb-2">
-                              Specialites
-                            </p>
-                            <div className="flex flex-wrap gap-1">
-                              {selectedUser.specialite.map((spec, idx) => (
-                                <span
-                                  key={idx}
-                                  className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded"
-                                >
-                                  {spec.nom}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      {selectedUser.thematiqueDeRecherche &&
-                        selectedUser.thematiqueDeRecherche.length > 0 && (
-                          <div className="p-3 bg-muted rounded">
-                            <p className="text-sm font-medium mb-2">
-                              Thematiques de Recherche
-                            </p>
-                            <div className="flex flex-wrap gap-1">
-                              {selectedUser.thematiqueDeRecherche.map(
-                                (them, idx) => (
-                                  <span
-                                    key={idx}
-                                    className="inline-block px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded"
-                                  >
-                                    {them.nom}
-                                  </span>
-                                ),
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      {!selectedUser.university &&
-                        !selectedUser.etablissement &&
-                        !selectedUser.departement &&
-                        !selectedUser.laboratoire &&
-                        !selectedUser.equipe && (
-                          <p className="text-xs text-muted-foreground italic">
-                            No organizations assigned
-                          </p>
-                        )}
-                    </div>
-                  </div>
-                </div>
-              </ScrollArea>
+              <ProfileTabsContent
+                user={selectedUser}
+                onProfileClick={handleViewProfile}
+              />
 
               <div className="flex gap-2 pt-4 border-t px-6 pb-6">
                 {isConnected(selectedUser.id) ? (

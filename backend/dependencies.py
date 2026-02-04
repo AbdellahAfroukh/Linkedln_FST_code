@@ -33,7 +33,8 @@ def get_current_user(
         joinedload(User.laboratoire),
         joinedload(User.equipe),
         joinedload(User.specialite),
-        joinedload(User.thematiqueDeRecherche)
+        joinedload(User.thematiqueDeRecherche),
+        joinedload(User.googleScholarIntegration)
     ).filter(User.id == user_id).first()
     
     if user is None:

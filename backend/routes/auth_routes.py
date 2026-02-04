@@ -23,6 +23,40 @@ from models.organisation import Specialite, ThematiqueDeRecherche
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
+def user_to_response(user: User) -> dict:
+    """Convert User model to UserResponse dict with googleScholarId"""
+    user_dict = {
+        "id": user.id,
+        "email": user.email,
+        "fullName": user.fullName,
+        "user_type": user.user_type.value if hasattr(user.user_type, 'value') else user.user_type,
+        "profile_completed": user.profile_completed,
+        "otp_configured": user.otp_configured,
+        "nom": user.nom,
+        "prenom": user.prenom,
+        "grade": user.grade,
+        "dateDeNaissance": user.dateDeNaissance,
+        "photoDeProfil": user.photoDeProfil,
+        "universityId": user.universityId,
+        "etablissementId": user.etablissementId,
+        "departementId": user.departementId,
+        "laboratoireId": user.laboratoireId,
+        "equipeId": user.equipeId,
+        "specialiteId": user.specialiteId,
+        "thematiqueDeRechercheId": user.thematiqueDeRechercheId,
+        "numeroDeSomme": user.numeroDeSomme,
+        "googleScholarId": user.googleScholarIntegration.googleScholarId if user.googleScholarIntegration else None,
+        "university": user.university,
+        "etablissement": user.etablissement,
+        "departement": user.departement,
+        "laboratoire": user.laboratoire,
+        "equipe": user.equipe,
+        "specialite": user.specialite,
+        "thematiqueDeRecherche": user.thematiqueDeRecherche,
+    }
+    return user_dict
+
+
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(user_data: UserRegister, db: Session = Depends(get_db)):
     """
@@ -166,7 +200,7 @@ def complete_profile(
     db.commit()
     db.refresh(current_user)
 
-    return current_user
+    return user_to_response(current_user)
 
 
 @router.post("/verify-2fa", response_model=TokenResponse)
@@ -306,7 +340,7 @@ def get_current_user_info(current_user: User = Depends(get_current_active_user))
     """
     Get current authenticated user information
     """
-    return current_user
+    return user_to_response(current_user)
 
 
 @router.post("/logout", response_model=dict)
@@ -449,8 +483,9 @@ def get_user_profile(
         joinedload(User.laboratoire),
         joinedload(User.equipe),
         joinedload(User.specialite),
-        joinedload(User.thematiqueDeRecherche)
+        joinedload(User.thematiqueDeRecherche),
+        joinedload(User.googleScholarIntegration)
     ).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return user
+    return user_to_response(user)

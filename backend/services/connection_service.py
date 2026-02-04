@@ -110,33 +110,58 @@ class ConnectionService:
 
     @staticmethod
     def get_mutual_connections(db: Session, user: User, other_user_id: int):
-        # Get all accepted connections for both users
-        user_connections = db.query(Connection).filter(
+        # Get all accepted connections for current user
+        user_connections = db.query(Connection).options(
+            joinedload(Connection.sender),
+            joinedload(Connection.receiver)
+        ).filter(
             ((Connection.senderId == user.id) | (Connection.receiverId == user.id)) &
             (Connection.status == ConnectionStatus.ACCEPTED)
         ).all()
-        other_user_connections = db.query(Connection).filter(
+        
+        # Get all accepted connections for other user
+        other_user_connections = db.query(Connection).options(
+            joinedload(Connection.sender),
+            joinedload(Connection.receiver)
+        ).filter(
             ((Connection.senderId == other_user_id) | (Connection.receiverId == other_user_id)) &
             (Connection.status == ConnectionStatus.ACCEPTED)
         ).all()
+        
         # Extract user IDs from connections
+        # For current user's connections: get all connected users except the profile owner
         user_connection_ids = set()
         for conn in user_connections:
-            if conn.senderId == user.id:
-                user_connection_ids.add(conn.receiverId)
-            else:
-                user_connection_ids.add(conn.senderId)
+            other_id = conn.receiverId if conn.senderId == user.id else conn.senderId
+            # Don't include the profile owner (we want to find mutual connections excluding them)
+            if other_id != other_user_id:
+                user_connection_ids.add(other_id)
+        
+        # For profile owner's connections: get all connected users except the current user
         other_user_connection_ids = set()
         for conn in other_user_connections:
-            if conn.senderId == other_user_id:
-                other_user_connection_ids.add(conn.receiverId)
-            else:
-                other_user_connection_ids.add(conn.senderId)
-        # Find mutual connections
+            other_id = conn.receiverId if conn.senderId == other_user_id else conn.senderId
+            # Don't include the current user (we want to find mutual connections excluding them)
+            if other_id != user.id:
+                other_user_connection_ids.add(other_id)
+        
+        # Find mutual connection IDs (people connected to both)
         mutual_ids = user_connection_ids & other_user_connection_ids
-        # Fetch mutual connection objects
-        mutual_connections = db.query(Connection).filter(
-            ((Connection.senderId.in_(mutual_ids)) | (Connection.receiverId.in_(mutual_ids))) &
+        
+        if not mutual_ids:
+            return []
+        
+        # Return connections from current user's perspective to these mutual users
+        # This ensures we return Connection objects with proper sender/receiver populated
+        mutual_connections = db.query(Connection).options(
+            joinedload(Connection.sender),
+            joinedload(Connection.receiver)
+        ).filter(
+            (
+                ((Connection.senderId == user.id) & (Connection.receiverId.in_(mutual_ids))) |
+                ((Connection.receiverId == user.id) & (Connection.senderId.in_(mutual_ids)))
+            ) &
             (Connection.status == ConnectionStatus.ACCEPTED)
         ).all()
-        return list(mutual_connections)
+        
+        return mutual_connections

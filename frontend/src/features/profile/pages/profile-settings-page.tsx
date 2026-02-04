@@ -18,6 +18,7 @@ import {
 import { toast } from "sonner";
 import { Loader2, Shield, User } from "lucide-react";
 import { FileUpload } from "@/components/file-upload";
+import { transformUrl } from "@/lib/url-utils";
 
 const profileUpdateSchema = z.object({
   nom: z.string().min(1, "Last name is required"),
@@ -310,7 +311,7 @@ export function ProfileSettingsPage() {
                 <div className="h-16 w-16 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center border">
                   {profilePhotoUrl ? (
                     <img
-                      src={profilePhotoUrl}
+                      src={transformUrl(profilePhotoUrl)}
                       alt={user?.fullName || "User"}
                       className="h-full w-full object-cover"
                       onError={(e) => {

@@ -127,7 +127,7 @@ export function ChatList({ onSelectChat, selectedChat }: ChatListProps) {
             {filteredChats.map((chat) => (
               <div
                 key={chat.id}
-                className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition ${
+                className={`group flex items-center gap-3 p-3 rounded-lg cursor-pointer transition ${
                   selectedChat?.id === chat.id
                     ? "bg-primary text-primary-foreground"
                     : "hover:bg-accent"
@@ -153,7 +153,7 @@ export function ChatList({ onSelectChat, selectedChat }: ChatListProps) {
                   variant="ghost"
                   size="sm"
                   onClick={(e) => handleDeleteChat(e, chat.id)}
-                  className="opacity-0 group-hover:opacity-100"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

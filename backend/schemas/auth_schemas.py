@@ -99,6 +99,7 @@ class UserResponse(BaseModel):
     specialiteId: Optional[int] = None
     thematiqueDeRechercheId: Optional[int] = None
     numeroDeSomme: Optional[str] = None
+    googleScholarId: Optional[str] = None
     university: Optional[OrganisationInfo] = None
     etablissement: Optional[OrganisationInfo] = None
     departement: Optional[OrganisationInfo] = None
@@ -124,6 +125,7 @@ class UserSearchResult(BaseModel):
     profile_completed: bool
     photoDeProfil: Optional[str] = None
     grade: Optional[str] = None
+    googleScholarId: Optional[str] = None
     university: Optional[OrganisationInfo] = None
     etablissement: Optional[OrganisationInfo] = None
     departement: Optional[OrganisationInfo] = None
