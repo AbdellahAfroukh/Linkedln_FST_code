@@ -3,6 +3,7 @@ from sqlalchemy import desc, func
 from models.post import Post, Comment, Reaction, ReactionType
 from models.user import User
 from models.connection import Connection, ConnectionStatus
+from models.google_scholar import Publication
 from fastapi import HTTPException, status
 from typing import List, Dict, Optional
 from datetime import datetime, timezone
@@ -32,6 +33,7 @@ class PostService:
         """Get a post by ID with access control"""
         post = db.query(Post).options(
             joinedload(Post.user),
+            joinedload(Post.publication),
             joinedload(Post.comments).joinedload(Comment.user),
             joinedload(Post.comments).joinedload(Comment.reactions).joinedload(Reaction.user),
             joinedload(Post.reactions).joinedload(Reaction.user)
@@ -98,6 +100,14 @@ class PostService:
                 detail="You can only delete your own posts"
             )
         
+        # If this post is linked to a publication, unpost it
+        if post.publicationId:
+            publication = db.query(Publication).filter(
+                Publication.id == post.publicationId
+            ).first()
+            if publication:
+                publication.isPosted = False
+        
         db.delete(post)
         db.commit()
         
@@ -124,6 +134,7 @@ class PostService:
         total = query.count()
         posts = query.options(
             joinedload(Post.user),
+            joinedload(Post.publication),
             joinedload(Post.comments).joinedload(Comment.user),
             joinedload(Post.reactions).joinedload(Reaction.user)
         ).order_by(desc(Post.timestamp)).offset(skip).limit(limit).all()
@@ -146,6 +157,7 @@ class PostService:
         total = query.count()
         posts = query.options(
             joinedload(Post.user),
+            joinedload(Post.publication),
             joinedload(Post.comments).joinedload(Comment.user),
             joinedload(Post.reactions).joinedload(Reaction.user)
         ).order_by(desc(Post.timestamp)).offset(skip).limit(limit).all()

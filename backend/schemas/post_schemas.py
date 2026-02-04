@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, date
 from models.post import ReactionType
 
 
@@ -55,6 +55,18 @@ class ReactionResponse(BaseModel):
         from_attributes = True
 
 
+class PublicationInfo(BaseModel):
+    """Publication information for posts"""
+    id: int
+    title: str
+    publicationDate: Optional[date] = None
+    citationCount: int
+    googleScholarUrl: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+
 class CommentResponse(BaseModel):
     """Response schema for a comment"""
     id: int
@@ -77,7 +89,9 @@ class PostResponse(BaseModel):
     attachement: Optional[str] = None
     isPublic: bool
     userId: int
+    publicationId: Optional[int] = None
     user: UserBasicInfo
+    publication: Optional[PublicationInfo] = None
     comments: List[CommentResponse] = []
     reactions: List[ReactionResponse] = []
     

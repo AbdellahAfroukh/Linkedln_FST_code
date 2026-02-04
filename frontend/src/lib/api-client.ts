@@ -1,7 +1,16 @@
 import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 import { ApiError } from '@/types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const envApiBase = import.meta.env.VITE_API_BASE_URL;
+const isLocalEnvBase =
+  !!envApiBase && /localhost|127\.0\.0\.1/.test(envApiBase);
+export const API_BASE_URL =
+  envApiBase && !isLocalEnvBase
+    ? envApiBase
+    : `http://${window.location.hostname}:8000`;
+
+// Log the API URL for debugging
+console.log('API Base URL:', API_BASE_URL);
 
 // Create axios instance
 export const apiClient = axios.create({

@@ -1,10 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Chat } from "@/types";
 import { ChatList } from "../components/chat-list";
 import { ChatThread } from "../components/chat-thread";
+import { useChatContext } from "../context/chat-context";
 
 export function ChatsPage() {
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
+  const { setActiveChatId } = useChatContext();
+
+  // Update active chat ID when selection changes
+  useEffect(() => {
+    setActiveChatId(selectedChat?.id ?? null);
+  }, [selectedChat?.id, setActiveChatId]);
+
+  // Clear active chat ID when leaving the chats page
+  useEffect(() => {
+    return () => {
+      setActiveChatId(null);
+    };
+  }, [setActiveChatId]);
 
   return (
     <div className="max-w-7xl mx-auto h-screen flex gap-6 p-6">

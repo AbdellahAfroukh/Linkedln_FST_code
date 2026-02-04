@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authApi, organizationsApi } from "@/api/auth";
 import { useAuthStore } from "@/store/auth";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, Shield, User } from "lucide-react";
+import { FileUpload } from "@/components/file-upload";
 
 const profileUpdateSchema = z.object({
   nom: z.string().min(1, "Last name is required"),
@@ -29,8 +30,8 @@ const profileUpdateSchema = z.object({
   departementId: z.number().optional().nullable(),
   laboratoireId: z.number().optional().nullable(),
   equipeId: z.number().optional().nullable(),
-  specialiteId: z.number().optional().nullable(),
-  thematiqueDeRechercheId: z.number().optional().nullable(),
+  specialiteIds: z.array(z.number()).optional(),
+  thematiqueDeRechercheIds: z.array(z.number()).optional(),
   numeroDeSomme: z.string().optional().nullable(),
 });
 
@@ -43,6 +44,7 @@ type Disable2FAForm = z.infer<typeof disable2FASchema>;
 
 export function ProfileSettingsPage() {
   const { user, setUser, fetchUser } = useAuthStore();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"profile" | "security">("profile");
   const [show2FASetup, setShow2FASetup] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
@@ -82,8 +84,8 @@ export function ProfileSettingsPage() {
       departementId: null,
       laboratoireId: null,
       equipeId: null,
-      specialiteId: null,
-      thematiqueDeRechercheId: null,
+      specialiteIds: [],
+      thematiqueDeRechercheIds: [],
       numeroDeSomme: "",
     },
   });
@@ -104,8 +106,9 @@ export function ProfileSettingsPage() {
         departementId: user.departementId || null,
         laboratoireId: user.laboratoireId || null,
         equipeId: user.equipeId || null,
-        specialiteId: user.specialiteId || null,
-        thematiqueDeRechercheId: user.thematiqueDeRechercheId || null,
+        specialiteIds: user.specialite?.map((s) => s.id) || [],
+        thematiqueDeRechercheIds:
+          user.thematiqueDeRecherche?.map((t) => t.id) || [],
         numeroDeSomme: user.numeroDeSomme || "",
       };
       profileForm.reset(formData);
@@ -183,6 +186,8 @@ export function ProfileSettingsPage() {
     mutationFn: authApi.completeProfile,
     onSuccess: (data) => {
       setUser(data);
+      queryClient.invalidateQueries({ queryKey: ["user"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
       toast.success("Profile updated successfully!");
     },
     onError: (error: any) => {
@@ -250,8 +255,8 @@ export function ProfileSettingsPage() {
       departementId: data.departementId || null,
       laboratoireId: data.laboratoireId || null,
       equipeId: data.equipeId || null,
-      specialiteId: data.specialiteId || null,
-      thematiqueDeRechercheId: data.thematiqueDeRechercheId || null,
+      specialiteIds: data.specialiteIds || [],
+      thematiqueDeRechercheIds: data.thematiqueDeRechercheIds || [],
     };
     updateProfileMutation.mutate(payload);
   };
@@ -393,29 +398,14 @@ export function ProfileSettingsPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="photoDeProfil">Profile Photo URL</Label>
-                  <Input
-                    id="photoDeProfil"
-                    placeholder="https://example.com/photo.jpg"
-                    value={profileForm.watch("photoDeProfil") || ""}
-                    onChange={(e) =>
-                      profileForm.setValue("photoDeProfil", e.target.value)
-                    }
-                  />
-                  {profileForm.watch("photoDeProfil") && (
-                    <div className="mt-2">
-                      <img
-                        src={profileForm.watch("photoDeProfil") || ""}
-                        alt="Profile preview"
-                        className="h-20 w-20 rounded-full object-cover border"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = "none";
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
+                <FileUpload
+                  label="Profile Photo"
+                  type="image"
+                  currentUrl={profileForm.watch("photoDeProfil") || ""}
+                  onUploadSuccess={(url) =>
+                    profileForm.setValue("photoDeProfil", url)
+                  }
+                />
 
                 <div className="space-y-2">
                   <Label htmlFor="universityId">University</Label>
@@ -537,49 +527,86 @@ export function ProfileSettingsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="specialiteId">Specialite</Label>
-                  <select
-                    id="specialiteId"
-                    className="w-full px-3 py-2 border rounded-md"
-                    value={profileForm.watch("specialiteId") || ""}
-                    onChange={(e) => {
-                      const value = e.target.value
-                        ? Number(e.target.value)
-                        : null;
-                      profileForm.setValue("specialiteId", value);
-                    }}
-                  >
-                    <option value="">Select Specialite</option>
-                    {specialites?.map((spec) => (
-                      <option key={spec.id} value={spec.id}>
-                        {spec.nom}
-                      </option>
-                    ))}
-                  </select>
+                  <Label>Specialites (Select all that apply)</Label>
+                  <div className="border rounded-md p-4 max-h-48 overflow-y-auto bg-gray-50">
+                    <div className="grid grid-cols-1 gap-2">
+                      {specialites?.map((spec) => (
+                        <label
+                          key={spec.id}
+                          className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-2 rounded"
+                        >
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-gray-300"
+                            checked={
+                              profileForm
+                                .watch("specialiteIds")
+                                ?.includes(spec.id) || false
+                            }
+                            onChange={(e) => {
+                              const current =
+                                profileForm.watch("specialiteIds") || [];
+                              if (e.target.checked) {
+                                profileForm.setValue("specialiteIds", [
+                                  ...current,
+                                  spec.id,
+                                ]);
+                              } else {
+                                profileForm.setValue(
+                                  "specialiteIds",
+                                  current.filter((id) => id !== spec.id),
+                                );
+                              }
+                            }}
+                          />
+                          <span className="text-sm">{spec.nom}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="thematiqueDeRechercheId">
-                    Thematique de Recherche
+                  <Label>
+                    Thematiques de Recherche (Select all that apply)
                   </Label>
-                  <select
-                    id="thematiqueDeRechercheId"
-                    className="w-full px-3 py-2 border rounded-md"
-                    value={profileForm.watch("thematiqueDeRechercheId") || ""}
-                    onChange={(e) => {
-                      const value = e.target.value
-                        ? Number(e.target.value)
-                        : null;
-                      profileForm.setValue("thematiqueDeRechercheId", value);
-                    }}
-                  >
-                    <option value="">Select Thematique</option>
-                    {thematiques?.map((them) => (
-                      <option key={them.id} value={them.id}>
-                        {them.nom}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="border rounded-md p-4 max-h-48 overflow-y-auto bg-gray-50">
+                    <div className="grid grid-cols-1 gap-2">
+                      {thematiques?.map((them) => (
+                        <label
+                          key={them.id}
+                          className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-2 rounded"
+                        >
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-gray-300"
+                            checked={
+                              profileForm
+                                .watch("thematiqueDeRechercheIds")
+                                ?.includes(them.id) || false
+                            }
+                            onChange={(e) => {
+                              const current =
+                                profileForm.watch("thematiqueDeRechercheIds") ||
+                                [];
+                              if (e.target.checked) {
+                                profileForm.setValue(
+                                  "thematiqueDeRechercheIds",
+                                  [...current, them.id],
+                                );
+                              } else {
+                                profileForm.setValue(
+                                  "thematiqueDeRechercheIds",
+                                  current.filter((id) => id !== them.id),
+                                );
+                              }
+                            }}
+                          />
+                          <span className="text-sm">{them.nom}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 {user?.user_type === "enseignant" && (

@@ -24,6 +24,7 @@ class Post(Base):
     timestamp = Column(DateTime, default=datetime.now(timezone.utc))
     attachement = Column(String, nullable=True) 
     isPublic = Column(Boolean, default=True)
+    publicationId = Column(Integer, ForeignKey("publications.id"), nullable=True)
 
     # Relationships
     userId = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -31,6 +32,7 @@ class Post(Base):
     user = relationship("User", back_populates="posts")
     comments = relationship("Comment", back_populates="post", cascade="all, delete-orphan")
     reactions = relationship("Reaction", back_populates="post", cascade="all, delete-orphan")
+    publication = relationship("Publication", foreign_keys=[publicationId])
 
 
 class Comment(Base):

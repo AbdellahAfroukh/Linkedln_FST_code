@@ -27,8 +27,8 @@ const profileSchema = z.object({
   departementId: z.number().optional().nullable(),
   laboratoireId: z.number().optional().nullable(),
   equipeId: z.number().optional().nullable(),
-  specialiteId: z.number().optional().nullable(),
-  thematiqueDeRechercheId: z.number().optional().nullable(),
+  specialiteIds: z.array(z.number()).optional(),
+  thematiqueDeRechercheIds: z.array(z.number()).optional(),
   numeroDeSomme: z.string().optional().nullable(),
 });
 
@@ -66,8 +66,8 @@ export function CompleteProfilePage() {
       departementId: null,
       laboratoireId: null,
       equipeId: null,
-      specialiteId: null,
-      thematiqueDeRechercheId: null,
+      specialiteIds: [],
+      thematiqueDeRechercheIds: [],
       numeroDeSomme: "",
     },
   });
@@ -153,8 +153,8 @@ export function CompleteProfilePage() {
       departementId: data.departementId || null,
       laboratoireId: data.laboratoireId || null,
       equipeId: data.equipeId || null,
-      specialiteId: data.specialiteId || null,
-      thematiqueDeRechercheId: data.thematiqueDeRechercheId || null,
+      specialiteIds: data.specialiteIds || [],
+      thematiqueDeRechercheIds: data.thematiqueDeRechercheIds || [],
     };
     completeMutation.mutate(payload);
   };
@@ -311,41 +311,81 @@ export function CompleteProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="specialiteId">Specialite</Label>
-                <select
-                  id="specialiteId"
-                  className="w-full px-3 py-2 border rounded-md"
-                  {...form.register("specialiteId", {
-                    setValueAs: (v) => (v === "" ? null : Number(v)),
-                  })}
-                >
-                  <option value="">Select Specialite</option>
-                  {specialites?.map((spec) => (
-                    <option key={spec.id} value={spec.id}>
-                      {spec.nom}
-                    </option>
-                  ))}
-                </select>
+                <Label>Specialites (Select all that apply)</Label>
+                <div className="border rounded-md p-4 max-h-48 overflow-y-auto bg-gray-50">
+                  <div className="grid grid-cols-1 gap-2">
+                    {specialites?.map((spec) => (
+                      <label
+                        key={spec.id}
+                        className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-2 rounded"
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-gray-300"
+                          checked={
+                            form.watch("specialiteIds")?.includes(spec.id) ||
+                            false
+                          }
+                          onChange={(e) => {
+                            const current = form.watch("specialiteIds") || [];
+                            if (e.target.checked) {
+                              form.setValue("specialiteIds", [
+                                ...current,
+                                spec.id,
+                              ]);
+                            } else {
+                              form.setValue(
+                                "specialiteIds",
+                                current.filter((id) => id !== spec.id),
+                              );
+                            }
+                          }}
+                        />
+                        <span className="text-sm">{spec.nom}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="thematiqueDeRechercheId">
-                  Thematique de Recherche
-                </Label>
-                <select
-                  id="thematiqueDeRechercheId"
-                  className="w-full px-3 py-2 border rounded-md"
-                  {...form.register("thematiqueDeRechercheId", {
-                    setValueAs: (v) => (v === "" ? null : Number(v)),
-                  })}
-                >
-                  <option value="">Select Thematique</option>
-                  {thematiques?.map((them) => (
-                    <option key={them.id} value={them.id}>
-                      {them.nom}
-                    </option>
-                  ))}
-                </select>
+                <Label>Thematiques de Recherche (Select all that apply)</Label>
+                <div className="border rounded-md p-4 max-h-48 overflow-y-auto bg-gray-50">
+                  <div className="grid grid-cols-1 gap-2">
+                    {thematiques?.map((them) => (
+                      <label
+                        key={them.id}
+                        className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-2 rounded"
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-gray-300"
+                          checked={
+                            form
+                              .watch("thematiqueDeRechercheIds")
+                              ?.includes(them.id) || false
+                          }
+                          onChange={(e) => {
+                            const current =
+                              form.watch("thematiqueDeRechercheIds") || [];
+                            if (e.target.checked) {
+                              form.setValue("thematiqueDeRechercheIds", [
+                                ...current,
+                                them.id,
+                              ]);
+                            } else {
+                              form.setValue(
+                                "thematiqueDeRechercheIds",
+                                current.filter((id) => id !== them.id),
+                              );
+                            }
+                          }}
+                        />
+                        <span className="text-sm">{them.nom}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {isEnseignant && (

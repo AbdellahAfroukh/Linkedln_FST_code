@@ -18,6 +18,7 @@ from schemas.auth_schemas import (
 )
 from dependencies import get_current_user, get_current_active_user
 from models.user import User, UserType
+from models.organisation import Specialite, ThematiqueDeRecherche
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -137,10 +138,27 @@ def complete_profile(
         current_user.laboratoireId = data.laboratoireId
     if data.equipeId is not None:
         current_user.equipeId = data.equipeId
-    if data.specialiteId is not None:
-        current_user.specialiteId = data.specialiteId
-    if data.thematiqueDeRechercheId is not None:
-        current_user.thematiqueDeRechercheId = data.thematiqueDeRechercheId
+    
+    # Handle many-to-many relationships for specialite
+    if data.specialiteIds is not None:
+        # Clear existing specialites
+        current_user.specialite.clear()
+        # Add new specialites
+        for spec_id in data.specialiteIds:
+            specialite = db.query(Specialite).filter(Specialite.id == spec_id).first()
+            if specialite:
+                current_user.specialite.append(specialite)
+    
+    # Handle many-to-many relationships for thematiqueDeRecherche
+    if data.thematiqueDeRechercheIds is not None:
+        # Clear existing thematiques
+        current_user.thematiqueDeRecherche.clear()
+        # Add new thematiques
+        for them_id in data.thematiqueDeRechercheIds:
+            thematique = db.query(ThematiqueDeRecherche).filter(ThematiqueDeRecherche.id == them_id).first()
+            if thematique:
+                current_user.thematiqueDeRecherche.append(thematique)
+    
     if data.numeroDeSomme is not None:
         current_user.numeroDeSomme = data.numeroDeSomme
 
@@ -429,7 +447,9 @@ def get_user_profile(
         joinedload(User.etablissement),
         joinedload(User.departement),
         joinedload(User.laboratoire),
-        joinedload(User.equipe)
+        joinedload(User.equipe),
+        joinedload(User.specialite),
+        joinedload(User.thematiqueDeRecherche)
     ).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

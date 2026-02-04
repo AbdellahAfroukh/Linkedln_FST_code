@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from models.google_scholar import GoogleScholarIntegration, Publication
 from models.user import User
+from models.post import Post
 from fastapi import HTTPException, status
 import requests
 from bs4 import BeautifulSoup
@@ -359,6 +360,39 @@ class GoogleScholarService:
     def toggle_publication_posted(db: Session, user: User, publication_id: int, is_posted: bool):
         """Toggle whether a publication is posted to the platform"""
         publication = GoogleScholarService.get_publication_by_id(db, user, publication_id)
+        
+        if is_posted:
+            # Create a post from the publication
+            post_content = f"{publication.title}\n\n"
+            if publication.summary:
+                post_content += publication.summary
+            elif publication.abstract:
+                post_content += publication.abstract
+            
+            # Check if a post already exists for this publication
+            existing_post = db.query(Post).filter(
+                Post.publicationId == publication_id,
+                Post.userId == user.id
+            ).first()
+            
+            if not existing_post:
+                post = Post(
+                    content=post_content,
+                    userId=user.id,
+                    publicationId=publication_id,
+                    isPublic=False,
+                    timestamp=datetime.datetime.now(datetime.timezone.utc)
+                )
+                db.add(post)
+        else:
+            # Delete the post associated with this publication
+            post = db.query(Post).filter(
+                Post.publicationId == publication_id,
+                Post.userId == user.id
+            ).first()
+            
+            if post:
+                db.delete(post)
         
         publication.isPosted = is_posted
         db.commit()

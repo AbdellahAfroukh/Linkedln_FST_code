@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, Trash2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { chatsApi } from "@/api/chats";
 import { Chat, Message } from "@/types";
 import { format } from "date-fns";
+import { FileUpload } from "@/components/file-upload";
+import { transformUrl } from "@/lib/url-utils";
 
 interface ChatThreadProps {
   chat: Chat | null;
@@ -18,12 +20,17 @@ interface ChatThreadProps {
 
 export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
   const { user: currentUser } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageInput, setMessageInput] = useState("");
+  const [attachmentUrl, setAttachmentUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const pollIntervalMs = 1000;
 
   // Don't render if no current user
   if (!currentUser) {
@@ -37,18 +44,39 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
   }
 
   useEffect(() => {
-    if (chat) {
-      console.log("Chat selected:", chat);
-      console.log("Current user:", currentUser);
-      loadMessages();
-      const interval = setInterval(loadMessages, 30000); // Poll every 30 seconds
-      return () => clearInterval(interval);
-    }
+    if (!chat) return;
+    console.log("Chat selected:", chat);
+    console.log("Current user:", currentUser);
+    setShouldAutoScroll(true); // Auto-scroll when switching chats
+    loadMessages(true);
+
+    const interval = setInterval(() => {
+      loadMessages(false);
+    }, pollIntervalMs);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        loadMessages(false);
+      }
+    };
+
+    const handleFocus = () => loadMessages(false);
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, [chat?.id]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (shouldAutoScroll) {
+      scrollToBottom();
+    }
+  }, [messages, shouldAutoScroll]);
 
   const scrollToBottom = () => {
     if (scrollRef.current) {
@@ -56,32 +84,81 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
     }
   };
 
-  const loadMessages = async () => {
+  const handleScroll = () => {
+    if (!scrollContainerRef.current) return;
+
+    const { scrollTop, scrollHeight, clientHeight } =
+      scrollContainerRef.current;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+
+    // Enable auto-scroll if user is near the bottom, disable if scrolled up
+    setShouldAutoScroll(isNearBottom);
+  };
+
+  const loadMessages = async (showLoading = true) => {
     if (!chat) return;
     try {
-      setIsLoading(true);
+      if (showLoading) {
+        setIsLoading(true);
+      }
       const data = await chatsApi.getMessages(chat.id);
       setMessages(data);
+
+      // Check if there are any unread messages from the other user
+      const hasUnread = data.some(
+        (msg) => msg.is_read === 0 && msg.senderId !== currentUser?.id,
+      );
+
+      console.log(
+        "Has unread messages:",
+        hasUnread,
+        "Total messages:",
+        data.length,
+      );
+
+      // If there are unread messages, mark them as read
+      if (hasUnread) {
+        console.log("Marking chat as read...");
+        await chatsApi.markChatAsRead(chat.id);
+        // Update local state: mark messages from other user as read
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg.senderId !== currentUser?.id ? { ...msg, is_read: 1 } : msg,
+          ),
+        );
+        // Invalidate the chats query to update the notification badge
+        queryClient.invalidateQueries({ queryKey: ["chats"] });
+        console.log("Chat marked as read");
+      }
     } catch (error) {
       console.error("Failed to load messages:", error);
     } finally {
-      setIsLoading(false);
+      if (showLoading) {
+        setIsLoading(false);
+      }
     }
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageInput.trim() || !chat || !currentUser) return;
+    if (!chat || !currentUser) return;
+    if (!messageInput.trim() && !attachmentUrl.trim()) return;
 
     try {
       setIsSending(true);
       // All chats are direct
       const receiverId =
         chat.user1Id === currentUser.id ? chat.user2Id : chat.user1Id;
-      const newMessage = await chatsApi.sendMessage(receiverId, messageInput);
+      const newMessage = await chatsApi.sendMessage(
+        receiverId,
+        messageInput.trim(),
+        attachmentUrl.trim() || undefined,
+      );
 
       setMessages([...messages, newMessage]);
       setMessageInput("");
+      setAttachmentUrl("");
+      setShouldAutoScroll(true); // Auto-scroll when sending a message
     } catch (error) {
       console.error("Failed to send message:", error);
       toast({
@@ -91,6 +168,26 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
       });
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: number) => {
+    try {
+      await chatsApi.deleteMessage(messageId);
+      setMessages(messages.filter((msg) => msg.id !== messageId));
+      // Invalidate chats to update unread count in case this was the last message
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+      toast({
+        title: "Success",
+        description: "Message deleted successfully",
+      });
+    } catch (error) {
+      console.error("Failed to delete message:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete message",
+        variant: "destructive",
+      });
     }
   };
 
@@ -106,6 +203,38 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
     if (!chat || !currentUser) return undefined;
     const otherUser = chat.user1Id === currentUser.id ? chat.user2 : chat.user1;
     return otherUser?.photoDeProfil;
+  };
+
+  const isImageUrl = (url?: string) => {
+    if (!url) return false;
+    const hasImageExtension =
+      /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(url);
+    const isDataUrl = url.startsWith("data:image/");
+    return hasImageExtension || isDataUrl;
+  };
+
+  const getFileIcon = (url?: string) => {
+    if (!url) return "📄";
+    const ext = url.split(".").pop()?.toLowerCase();
+    switch (ext) {
+      case "pdf":
+        return "📕";
+      case "doc":
+      case "docx":
+        return "📘";
+      case "xls":
+      case "xlsx":
+        return "📗";
+      case "txt":
+        return "📄";
+      default:
+        return "📎";
+    }
+  };
+
+  const getFileName = (url?: string) => {
+    if (!url) return "Document";
+    return url.split("/").pop() || "Document";
   };
 
   if (!chat) {
@@ -144,7 +273,11 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
           </div>
         ) : (
           <>
-            <ScrollArea className="flex-1">
+            <div
+              ref={scrollContainerRef}
+              onScroll={handleScroll}
+              className="flex-1 overflow-y-auto"
+            >
               <div className="p-4 space-y-4">
                 {messages.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">
@@ -169,32 +302,83 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
                       >
                         <Avatar className="h-8 w-8 flex-shrink-0">
                           <AvatarImage
-                            src={message.sender?.photoDeProfil}
+                            src={transformUrl(message.sender?.photoDeProfil)}
                             alt={message.sender?.fullName}
                           />
                           <AvatarFallback>
                             {message.sender?.fullName.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
-                        <div
-                          className={`rounded-lg px-4 py-2 ${
-                            message.senderId === currentUser?.id
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted"
-                          }`}
-                        >
-                          {chat.chat_type === "group" &&
-                            message.senderId !== currentUser?.id && (
-                              <p className="text-xs font-semibold mb-1 opacity-70">
-                                {message.sender?.fullName}
+                        <div className="relative group">
+                          <div
+                            className={`rounded-lg px-4 py-2 ${
+                              message.senderId === currentUser?.id
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted"
+                            }`}
+                          >
+                            {chat.chat_type === "group" &&
+                              message.senderId !== currentUser?.id && (
+                                <p className="text-xs font-semibold mb-1 opacity-70">
+                                  {message.sender?.fullName}
+                                </p>
+                              )}
+                            {message.content && (
+                              <p className="text-sm break-words">
+                                {message.content}
                               </p>
                             )}
-                          <p className="text-sm break-words">
-                            {message.content}
-                          </p>
-                          <p className="text-xs opacity-70 mt-1">
-                            {format(new Date(message.timestamp), "HH:mm")}
-                          </p>
+                            {message.attachment && (
+                              <div className="mt-2">
+                                {isImageUrl(message.attachment) ? (
+                                  <img
+                                    src={transformUrl(message.attachment)}
+                                    alt="Attachment"
+                                    className="max-h-64 rounded border object-contain"
+                                    onError={(e) => {
+                                      (
+                                        e.target as HTMLImageElement
+                                      ).style.display = "none";
+                                    }}
+                                  />
+                                ) : (
+                                  <a
+                                    href={transformUrl(message.attachment)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    download
+                                    className="inline-flex items-center gap-3 p-3 bg-background/70 border rounded-lg hover:bg-background/90 transition"
+                                  >
+                                    <span className="text-2xl">
+                                      {getFileIcon(message.attachment)}
+                                    </span>
+                                    <div className="flex-1">
+                                      <p className="text-xs font-medium">
+                                        {getFileName(message.attachment)}
+                                      </p>
+                                      <p className="text-[10px] opacity-70">
+                                        Click to download
+                                      </p>
+                                    </div>
+                                    <span className="opacity-60">↓</span>
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                            <p className="text-xs opacity-70 mt-1">
+                              {format(new Date(message.timestamp), "HH:mm")}
+                            </p>
+                          </div>
+                          {message.senderId === currentUser?.id && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="absolute -right-10 top-1/2 -translate-y-1/2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => handleDeleteMessage(message.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -202,9 +386,15 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
                 )}
                 <div ref={scrollRef} />
               </div>
-            </ScrollArea>
+            </div>
 
-            <div className="border-t p-4">
+            <div className="border-t p-4 space-y-3">
+              <FileUpload
+                label="Attachment (Image or Document)"
+                type="any"
+                currentUrl={attachmentUrl}
+                onUploadSuccess={(url) => setAttachmentUrl(url)}
+              />
               <form onSubmit={handleSendMessage} className="flex gap-2">
                 <Input
                   placeholder="Type a message..."
@@ -215,7 +405,9 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
                 />
                 <Button
                   type="submit"
-                  disabled={isSending || !messageInput.trim()}
+                  disabled={
+                    isSending || (!messageInput.trim() && !attachmentUrl.trim())
+                  }
                   size="icon"
                 >
                   {isSending ? (

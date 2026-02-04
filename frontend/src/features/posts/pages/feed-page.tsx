@@ -1,0 +1,384 @@
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { postsApi } from "@/api/posts";
+import { useAuthStore } from "@/store/auth";
+import { toast } from "sonner";
+import type { ReactionType } from "@/types";
+import { transformUrl } from "@/lib/url-utils";
+
+const REACTIONS: { label: string; value: ReactionType }[] = [
+  { label: "👍 Like", value: "like" },
+  { label: "❤️ Love", value: "love" },
+  { label: "😂 Funny", value: "funny" },
+  { label: "😡 Angry", value: "angry" },
+  { label: "😢 Sad", value: "sad" },
+  { label: "👎 Dislike", value: "dislike" },
+];
+
+export function FeedPage() {
+  const { user } = useAuthStore();
+  const queryClient = useQueryClient();
+  const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>(
+    {},
+  );
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["posts", "feed"],
+    queryFn: () => postsApi.getFeed(),
+  });
+
+  const addCommentMutation = useMutation({
+    mutationFn: ({ postId, content }: { postId: number; content: string }) =>
+      postsApi.addComment(postId, { content }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
+    },
+    onError: () => toast.error("Failed to add comment"),
+  });
+
+  const reactMutation = useMutation({
+    mutationFn: ({ postId, type }: { postId: number; type: ReactionType }) =>
+      postsApi.reactToPost(postId, { type }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
+    },
+    onError: () => toast.error("Failed to react"),
+  });
+
+  const removeReactionMutation = useMutation({
+    mutationFn: (postId: number) => postsApi.removePostReaction(postId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
+    },
+    onError: () => toast.error("Failed to remove reaction"),
+  });
+
+  const posts = data?.posts ?? [];
+
+  const getInitials = (fullName?: string) => {
+    if (!fullName) return "U";
+    return fullName
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase();
+  };
+
+  const isImageUrl = (url?: string) => {
+    if (!url) return false;
+    const hasImageExtension =
+      /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(url);
+    const isDataUrl = url.startsWith("data:image/");
+    return hasImageExtension || isDataUrl;
+  };
+
+  const getFileIcon = (url?: string) => {
+    if (!url) return "📄";
+    const ext = url.split(".").pop()?.toLowerCase();
+    switch (ext) {
+      case "pdf":
+        return "📕";
+      case "doc":
+      case "docx":
+        return "📘";
+      case "xls":
+      case "xlsx":
+        return "📗";
+      case "txt":
+        return "📄";
+      default:
+        return "📎";
+    }
+  };
+
+  const getFileName = (url?: string) => {
+    if (!url) return "Document";
+    return url.split("/").pop() || "Document";
+  };
+
+  const getReactionCounts = (reactions: (typeof posts)[0]["reactions"]) => {
+    const counts: Record<string, number> = {
+      like: 0,
+      love: 0,
+      funny: 0,
+      angry: 0,
+      sad: 0,
+      dislike: 0,
+    };
+    reactions.forEach((r) => {
+      counts[r.type]++;
+    });
+    return counts;
+  };
+
+  const getReactionEmoji = (type: ReactionType): string => {
+    const emojiMap: Record<ReactionType, string> = {
+      like: "👍",
+      love: "❤️",
+      funny: "😂",
+      angry: "😡",
+      sad: "😢",
+      dislike: "👎",
+    };
+    return emojiMap[type];
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Feed</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {isLoading && (
+            <p className="text-sm text-muted-foreground">Loading feed...</p>
+          )}
+          {isError && (
+            <p className="text-sm text-red-600">Failed to load posts.</p>
+          )}
+          {!isLoading && posts.length === 0 && (
+            <p className="text-sm text-muted-foreground">No posts to show.</p>
+          )}
+
+          {posts.map((post) => {
+            const userReaction = post.reactions.find(
+              (r) => r.userId === user?.id,
+            );
+            return (
+              <div key={post.id} className="border rounded-lg p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center border">
+                      {post.user.photoDeProfil ? (
+                        <img
+                          src={transformUrl(post.user.photoDeProfil)}
+                          alt={post.user.fullName}
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display =
+                              "none";
+                          }}
+                        />
+                      ) : (
+                        <span className="text-sm font-semibold text-gray-600">
+                          {getInitials(post.user.fullName)}
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <div className="font-medium">{post.user.fullName}</div>
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <span>{new Date(post.timestamp).toLocaleString()}</span>
+                        <span
+                          className={`px-2 py-0.5 rounded-full border text-[10px] ${
+                            post.isPublic
+                              ? "border-green-200 text-green-700 bg-green-50"
+                              : "border-yellow-200 text-yellow-700 bg-yellow-50"
+                          }`}
+                        >
+                          {post.isPublic ? "Public" : "Private"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-sm whitespace-pre-wrap">{post.content}</p>
+
+                {post.publication && (
+                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+                    <div className="flex items-start gap-2">
+                      <span className="text-lg">📚</span>
+                      <div className="flex-1">
+                        <div className="font-medium text-sm text-blue-900">
+                          {post.publication.title}
+                        </div>
+                        <div className="text-xs text-blue-700 mt-1 space-y-1">
+                          {post.publication.publicationDate && (
+                            <div>
+                              Published:{" "}
+                              {new Date(
+                                post.publication.publicationDate,
+                              ).toLocaleDateString()}
+                            </div>
+                          )}
+                          <div>Citations: {post.publication.citationCount}</div>
+                        </div>
+                        {post.publication.googleScholarUrl && (
+                          <a
+                            href={post.publication.googleScholarUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs text-blue-600 underline hover:text-blue-800 inline-block mt-2"
+                          >
+                            View on Google Scholar
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {post.attachement && (
+                  <div className="mt-3">
+                    {isImageUrl(post.attachement) ? (
+                      <img
+                        src={transformUrl(post.attachement)}
+                        alt="Post attachment"
+                        className="w-full max-h-96 rounded-lg border object-contain bg-gray-50"
+                        onError={(e) => {
+                          console.error(
+                            "Failed to load image:",
+                            post.attachement,
+                          );
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : null}
+                    {!isImageUrl(post.attachement) && (
+                      <a
+                        href={transformUrl(post.attachement)}
+                        target="_blank"
+                        rel="noreferrer"
+                        download
+                        className="inline-flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition"
+                      >
+                        <span className="text-3xl">
+                          {getFileIcon(post.attachement)}
+                        </span>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">
+                            {getFileName(post.attachement)}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Click to download
+                          </p>
+                        </div>
+                        <span className="text-gray-400">↓</span>
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2">
+                  {REACTIONS.map((reaction) => (
+                    <Button
+                      key={reaction.value}
+                      variant={
+                        userReaction?.type === reaction.value
+                          ? "default"
+                          : "outline"
+                      }
+                      size="sm"
+                      onClick={() => {
+                        if (userReaction?.type === reaction.value) {
+                          removeReactionMutation.mutate(post.id);
+                        } else {
+                          reactMutation.mutate({
+                            postId: post.id,
+                            type: reaction.value,
+                          });
+                        }
+                      }}
+                    >
+                      {reaction.label}
+                    </Button>
+                  ))}
+                </div>
+
+                <div className="text-xs text-gray-500 flex items-center gap-2">
+                  {post.reactions.length > 0 && (
+                    <div className="flex items-center gap-1">
+                      {Object.entries(getReactionCounts(post.reactions))
+                        .filter(([_, count]) => count > 0)
+                        .slice(0, 3)
+                        .map(([type, count]) => (
+                          <span key={type} title={`${count} ${type}`}>
+                            {getReactionEmoji(type as ReactionType)}
+                            <span className="text-xs font-medium ml-0.5">
+                              {count}
+                            </span>
+                          </span>
+                        ))}
+                      {post.reactions.length > 0 && (
+                        <span>{post.reactions.length}</span>
+                      )}
+                    </div>
+                  )}
+                  {post.reactions.length > 0 && post.comments.length > 0 && (
+                    <span>·</span>
+                  )}
+                  {post.comments.length > 0 && (
+                    <span>{post.comments.length} comments</span>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor={`comment-${post.id}`}>Add comment</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id={`comment-${post.id}`}
+                      placeholder="Write a comment..."
+                      value={commentDrafts[post.id] || ""}
+                      onChange={(e) =>
+                        setCommentDrafts((prev) => ({
+                          ...prev,
+                          [post.id]: e.target.value,
+                        }))
+                      }
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        const draft = (commentDrafts[post.id] || "").trim();
+                        if (!draft) {
+                          toast.error("Comment cannot be empty");
+                          return;
+                        }
+                        addCommentMutation.mutate({
+                          postId: post.id,
+                          content: draft,
+                        });
+                        setCommentDrafts((prev) => ({
+                          ...prev,
+                          [post.id]: "",
+                        }));
+                      }}
+                    >
+                      Comment
+                    </Button>
+                  </div>
+                </div>
+
+                {post.comments.length > 0 && (
+                  <div className="space-y-2">
+                    {post.comments.map((comment) => (
+                      <div
+                        key={comment.id}
+                        className="bg-gray-50 rounded-md p-3"
+                      >
+                        <div className="text-sm font-medium">
+                          {comment.user.fullName}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(comment.timestamp).toLocaleString()}
+                        </div>
+                        <p className="text-sm mt-1">{comment.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

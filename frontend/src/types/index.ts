@@ -400,6 +400,8 @@ export interface Message {
   chatId: number;
   senderId: number;
   content: string;
+  attachment?: string;
+  is_read: number;
   timestamp: string;
   sender?: UserBasicInfo;
 }
@@ -407,6 +409,7 @@ export interface Message {
 export interface MessageCreate {
   receiverId: number;
   content: string;
+  attachment?: string;
 }
 
 export interface ChatDetailResponse extends Chat {
@@ -416,6 +419,14 @@ export interface ChatDetailResponse extends Chat {
 // Post types
 export type ReactionType = 'like' | 'love' | 'funny' | 'angry' | 'sad' | 'dislike';
 
+export interface PublicationInfo {
+  id: number;
+  title: string;
+  publicationDate?: string;
+  citationCount: number;
+  googleScholarUrl?: string;
+}
+
 export interface Post {
   id: number;
   content: string;
@@ -423,7 +434,9 @@ export interface Post {
   attachement?: string;
   isPublic: boolean;
   userId: number;
+  publicationId?: number;
   user: UserBasicInfo;
+  publication?: PublicationInfo;
   comments: Comment[];
   reactions: Reaction[];
 }
@@ -576,6 +589,7 @@ export interface Message {
   timestamp: string;
   senderId: number;
   chatId: number;
+  attachment?: string;
   sender?: UserSimple;
 }
 
@@ -609,6 +623,7 @@ export interface MessageCreateRequest {
   content: string;
   receiverId?: number;
   chatId?: number;
+  attachment?: string;
 }
 
 export interface CreateGroupChatRequest {

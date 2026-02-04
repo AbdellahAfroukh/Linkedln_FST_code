@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { chatsApi } from "@/api/chats";
 import { Chat } from "@/types";
+import { transformUrl } from "@/lib/url-utils";
 
 interface ChatListProps {
   onSelectChat: (chat: Chat) => void;
@@ -72,7 +73,7 @@ export function ChatList({ onSelectChat, selectedChat }: ChatListProps) {
   const getDisplayAvatar = (chat: Chat) => {
     const otherUser =
       chat.user1Id === currentUser?.id ? chat.user2 : chat.user1;
-    return otherUser?.photoDeProfil;
+    return transformUrl(otherUser?.photoDeProfil);
   };
 
   const getDisplayInitial = (chat: Chat): string => {

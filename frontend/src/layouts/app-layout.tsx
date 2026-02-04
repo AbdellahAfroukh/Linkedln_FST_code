@@ -1,5 +1,6 @@
 import { Outlet, Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/auth";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Home,
@@ -13,14 +14,21 @@ import {
   LogOut,
   Menu,
   Shield,
+  Rss,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { transformUrl } from "@/lib/url-utils";
+import { useIncomingRequestsCount } from "@/features/connections/hooks/use-incoming-requests-count";
+import { useChatsCount } from "@/features/chats/hooks/use-chats-count";
 
 export function AppLayout() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { count: incomingRequestsCount } = useIncomingRequestsCount();
+  const { count: chatsCount } = useChatsCount();
   const userInitials = user?.fullName
     ? user.fullName
         .split(" ")
@@ -33,12 +41,14 @@ export function AppLayout() {
 
   const handleLogout = async () => {
     await logout();
+    queryClient.clear(); // Clear all cached queries
     navigate("/login");
   };
 
   const navItems = [
     { to: "/dashboard", icon: Home, label: "Dashboard" },
     { to: "/posts", icon: FileText, label: "Posts" },
+    { to: "/feed", icon: Rss, label: "Feed" },
     { to: "/connections", icon: Users, label: "Connections" },
     { to: "/chats", icon: MessageSquare, label: "Messages" },
     { to: "/projets", icon: FolderKanban, label: "Projects" },
@@ -82,7 +92,7 @@ export function AppLayout() {
             <div className="h-9 w-9 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center border">
               {user?.photoDeProfil ? (
                 <img
-                  src={user.photoDeProfil}
+                  src={transformUrl(user.photoDeProfil)}
                   alt={user.fullName || "User"}
                   className="h-full w-full object-cover"
                   onError={(e) => {
@@ -127,10 +137,20 @@ export function AppLayout() {
                 key={item.to}
                 to={item.to}
                 onClick={() => setSidebarOpen(false)}
-                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors relative"
               >
                 <item.icon className="h-5 w-5" />
                 <span>{item.label}</span>
+                {item.label === "Connections" && incomingRequestsCount > 0 && (
+                  <span className="ml-auto flex items-center justify-center h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold">
+                    {incomingRequestsCount}
+                  </span>
+                )}
+                {item.label === "Messages" && chatsCount > 0 && (
+                  <span className="ml-auto flex items-center justify-center h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold">
+                    {chatsCount}
+                  </span>
+                )}
               </Link>
             ))}
           </nav>

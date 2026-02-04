@@ -10,8 +10,12 @@ import {
 
 export const chatsApi = {
   // Direct message operations
-  sendMessage: async (receiverId: number, content: string): Promise<Message> => {
-    const request: MessageCreateRequest = { content, receiverId };
+  sendMessage: async (
+    receiverId: number,
+    content: string,
+    attachment?: string,
+  ): Promise<Message> => {
+    const request: MessageCreateRequest = { content, receiverId, attachment };
     const response = await apiClient.post('/chats/message', request);
     return response.data;
   },
@@ -51,6 +55,16 @@ export const chatsApi = {
   },
 
   // Delete operations
+  deleteMessage: async (messageId: number): Promise<{ message: string }> => {
+    const response = await apiClient.delete(`/chats/messages/${messageId}`);
+    return response.data;
+  },
+
+  markChatAsRead: async (chatId: number): Promise<{ message: string }> => {
+    const response = await apiClient.post(`/chats/${chatId}/mark-as-read`);
+    return response.data;
+  },
+
   delete: async (id: number): Promise<{ message: string }> => {
     const response = await apiClient.delete(`/chats/${id}`);
     return response.data;

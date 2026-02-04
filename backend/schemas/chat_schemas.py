@@ -12,12 +12,15 @@ class UserSimple(BaseModel):
         from_attributes = True
 
 class MessageCreate(BaseModel):
-    content: str
+    content: Optional[str] = None
     receiverId: int
+    attachment: Optional[str] = None
 
 class MessageResponse(BaseModel):
     id: int
     content: str
+    attachment: Optional[str] = None
+    is_read: int = 0
     timestamp: datetime
     senderId: int
     chatId: int

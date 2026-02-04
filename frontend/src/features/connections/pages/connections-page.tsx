@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { transformUrl } from "@/lib/url-utils";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +39,42 @@ export function ConnectionsPage() {
     null,
   );
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+  const pollIntervalMs = 1000;
+
+  // Auto-refresh connections with polling
+  useEffect(() => {
+    // Refetch on visibility change
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        acceptedQuery.refetch();
+        incomingQuery.refetch();
+        outgoingQuery.refetch();
+      }
+    };
+
+    // Refetch on window focus
+    const handleFocus = () => {
+      acceptedQuery.refetch();
+      incomingQuery.refetch();
+      outgoingQuery.refetch();
+    };
+
+    // Set up polling interval
+    const interval = setInterval(() => {
+      acceptedQuery.refetch();
+      incomingQuery.refetch();
+      outgoingQuery.refetch();
+    }, pollIntervalMs);
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, []);
 
   const acceptedQuery = useQuery({
     queryKey: ["connections", "accepted"],
@@ -328,7 +366,7 @@ export function ConnectionsPage() {
               >
                 <div className="flex items-center gap-3">
                   <Avatar className="h-12 w-12">
-                    <AvatarImage src={otherUser?.photoDeProfil} />
+                    <AvatarImage src={transformUrl(otherUser?.photoDeProfil)} />
                     <AvatarFallback>
                       {otherUser ? getInitials(otherUser.fullName) : "?"}
                     </AvatarFallback>
@@ -421,7 +459,7 @@ export function ConnectionsPage() {
                     {selectedUser.numeroDeSomme && (
                       <div>
                         <Label className="text-muted-foreground">
-                          Employee Number
+                          Numero de Somme
                         </Label>
                         <p className="font-medium">
                           {selectedUser.numeroDeSomme}
@@ -517,6 +555,44 @@ export function ConnectionsPage() {
                           </div>
                         </div>
                       )}
+                      {selectedUser.specialite &&
+                        selectedUser.specialite.length > 0 && (
+                          <div className="p-3 bg-muted rounded">
+                            <p className="text-sm font-medium mb-2">
+                              Specialites
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {selectedUser.specialite.map((spec, idx) => (
+                                <span
+                                  key={idx}
+                                  className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded"
+                                >
+                                  {spec.nom}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      {selectedUser.thematiqueDeRecherche &&
+                        selectedUser.thematiqueDeRecherche.length > 0 && (
+                          <div className="p-3 bg-muted rounded">
+                            <p className="text-sm font-medium mb-2">
+                              Thematiques de Recherche
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {selectedUser.thematiqueDeRecherche.map(
+                                (them, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="inline-block px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded"
+                                  >
+                                    {them.nom}
+                                  </span>
+                                ),
+                              )}
+                            </div>
+                          </div>
+                        )}
                       {!selectedUser.university &&
                         !selectedUser.etablissement &&
                         !selectedUser.departement &&

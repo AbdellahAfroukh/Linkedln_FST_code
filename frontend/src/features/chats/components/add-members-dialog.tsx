@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { transformUrl } from "@/lib/url-utils";
 import { useToast } from "@/components/ui/use-toast";
 import { chatsApi } from "@/api/chats";
 import { usersApi } from "@/api/users";
@@ -164,7 +165,7 @@ export default function AddMembersDialog({
                         />
                         <Avatar className="h-8 w-8">
                           <AvatarImage
-                            src={user.photoDeProfil}
+                            src={transformUrl(user.photoDeProfil)}
                             alt={user.fullName}
                           />
                           <AvatarFallback>

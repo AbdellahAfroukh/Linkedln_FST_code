@@ -45,8 +45,8 @@ class ProfileCompleteRequest(BaseModel):
     departementId: Optional[int] = None
     laboratoireId: Optional[int] = None
     equipeId: Optional[int] = None
-    specialiteId: Optional[int] = None
-    thematiqueDeRechercheId: Optional[int] = None
+    specialiteIds: Optional[list[int]] = None  # Changed to list
+    thematiqueDeRechercheIds: Optional[list[int]] = None  # Changed to list
     numeroDeSomme: Optional[str] = None
 
 
@@ -104,6 +104,8 @@ class UserResponse(BaseModel):
     departement: Optional[OrganisationInfo] = None
     laboratoire: Optional[OrganisationInfo] = None
     equipe: Optional[OrganisationInfo] = None
+    specialite: Optional[list[OrganisationInfo]] = None  # Many-to-many relationship
+    thematiqueDeRecherche: Optional[list[OrganisationInfo]] = None  # Many-to-many relationship
 
     @field_serializer('dateDeNaissance')
     def serialize_date(self, value: Optional[date]) -> Optional[str]:

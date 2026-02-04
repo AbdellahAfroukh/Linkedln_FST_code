@@ -42,17 +42,29 @@ class ChatService:
         return chat
 
     @staticmethod
-    def send_message(db: Session, sender: User, receiver_id: int, content: str):
+    def send_message(
+        db: Session,
+        sender: User,
+        receiver_id: int,
+        content: str | None,
+        attachment: str | None = None,
+    ):
         """Send a message to another user, creating chat if needed"""
-        if not content or not content.strip():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message content cannot be empty")
+        has_content = bool(content and content.strip())
+        has_attachment = bool(attachment and attachment.strip())
+        if not has_content and not has_attachment:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Message must include content or an attachment",
+            )
         
         # Get or create chat
         chat = ChatService.get_or_create_chat(db, sender, receiver_id)
         
         # Create message
         message = Message(
-            content=content.strip(),
+            content=(content or "").strip(),
+            attachment=attachment.strip() if attachment else None,
             timestamp=datetime.now(timezone.utc),
             chatId=chat.id,
             senderId=sender.id
@@ -99,6 +111,38 @@ class ChatService:
     def get_or_create_chat_with_user(db: Session, current_user: User, other_user_id: int):
         """Get or create chat with specific user (returns chat object)"""
         return ChatService.get_or_create_chat(db, current_user, other_user_id)
+
+    @staticmethod
+    def mark_chat_as_read(db: Session, chat_id: int, current_user: User):
+        """Mark all messages in a chat as read by the current user (all messages not sent by them)"""
+        chat = ChatService.get_chat(db, chat_id, current_user)
+        
+        # Mark all messages from the other user as read
+        messages = db.query(Message).filter(
+            Message.chatId == chat_id,
+            Message.senderId != current_user.id
+        ).all()
+        
+        for message in messages:
+            message.is_read = 1
+        
+        db.commit()
+        return {"message": "Chat marked as read"}
+
+    @staticmethod
+    def delete_message(db: Session, message_id: int, current_user: User):
+        """Delete a specific message (only sender can delete their own messages)"""
+        message = db.query(Message).filter(Message.id == message_id).first()
+        if not message:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
+        
+        # Check if current user is the sender
+        if message.senderId != current_user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this message")
+        
+        db.delete(message)
+        db.commit()
+        return {"message": "Message deleted successfully"}
 
     @staticmethod
     def delete_chat(db: Session, chat_id: int, current_user: User):

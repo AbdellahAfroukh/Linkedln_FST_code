@@ -8,6 +8,8 @@ import { postsApi } from "@/api/posts";
 import { useAuthStore } from "@/store/auth";
 import { toast } from "sonner";
 import type { ReactionType } from "@/types";
+import { transformUrl } from "@/lib/url-utils";
+import { FileUpload } from "@/components/file-upload";
 
 const REACTIONS: { label: string; value: ReactionType }[] = [
   { label: "👍 Like", value: "like" },
@@ -28,9 +30,13 @@ export function PostsFeedPage() {
     {},
   );
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["posts", "feed"],
-    queryFn: () => postsApi.getFeed(),
+  const { data: myPostsData, isLoading: myPostsLoading } = useQuery({
+    queryKey: ["posts", "my-posts"],
+    queryFn: () =>
+      user
+        ? postsApi.getUserPosts(user.id, { limit: 100 })
+        : Promise.resolve({ posts: [] }),
+    enabled: !!user,
   });
 
   const createPostMutation = useMutation({
@@ -39,6 +45,7 @@ export function PostsFeedPage() {
       setContent("");
       setAttachement("");
       setIsPublic(true);
+      queryClient.invalidateQueries({ queryKey: ["posts", "my-posts"] });
       queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
       toast.success("Post created");
     },
@@ -46,18 +53,37 @@ export function PostsFeedPage() {
   });
 
   const deletePostMutation = useMutation({
-    mutationFn: postsApi.delete,
-    onSuccess: () => {
+    mutationFn: (post: (typeof myPosts)[0]) => postsApi.delete(post.id),
+    onSuccess: (_, deletedPost) => {
+      queryClient.invalidateQueries({ queryKey: ["posts", "my-posts"] });
       queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
+      // If the deleted post was a publication post, invalidate Google Scholar cache
+      if (deletedPost.publicationId) {
+        queryClient.invalidateQueries({
+          queryKey: ["google-scholar", "publications"],
+        });
+      }
       toast.success("Post deleted");
     },
     onError: () => toast.error("Failed to delete post"),
+  });
+
+  const updateVisibilityMutation = useMutation({
+    mutationFn: ({ postId, isPublic }: { postId: number; isPublic: boolean }) =>
+      postsApi.update(postId, { isPublic }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posts", "my-posts"] });
+      queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
+      toast.success("Post visibility updated");
+    },
+    onError: () => toast.error("Failed to update visibility"),
   });
 
   const addCommentMutation = useMutation({
     mutationFn: ({ postId, content }: { postId: number; content: string }) =>
       postsApi.addComment(postId, { content }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posts", "my-posts"] });
       queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
     },
     onError: () => toast.error("Failed to add comment"),
@@ -67,6 +93,7 @@ export function PostsFeedPage() {
     mutationFn: ({ postId, type }: { postId: number; type: ReactionType }) =>
       postsApi.reactToPost(postId, { type }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posts", "my-posts"] });
       queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
     },
     onError: () => toast.error("Failed to react"),
@@ -75,12 +102,13 @@ export function PostsFeedPage() {
   const removeReactionMutation = useMutation({
     mutationFn: (postId: number) => postsApi.removePostReaction(postId),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posts", "my-posts"] });
       queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
     },
     onError: () => toast.error("Failed to remove reaction"),
   });
 
-  const posts = data?.posts ?? [];
+  const myPosts = myPostsData?.posts ?? [];
 
   const handleCreatePost = () => {
     if (!content.trim()) {
@@ -114,9 +142,61 @@ export function PostsFeedPage() {
     const isDataUrl = url.startsWith("data:image/");
     return hasImageExtension || isDataUrl;
   };
+  const getFileIcon = (url?: string) => {
+    if (!url) return "📄";
+    const ext = url.split(".").pop()?.toLowerCase();
+
+    switch (ext) {
+      case "pdf":
+        return "📕";
+      case "doc":
+      case "docx":
+        return "📘";
+      case "xls":
+      case "xlsx":
+        return "📗";
+      case "txt":
+        return "📄";
+      default:
+        return "📎";
+    }
+  };
+
+  const getFileName = (url?: string) => {
+    if (!url) return "Document";
+    return url.split("/").pop() || "Document";
+  };
+
+  const getReactionCounts = (reactions: (typeof posts)[0]["reactions"]) => {
+    const counts: Record<string, number> = {
+      like: 0,
+      love: 0,
+      funny: 0,
+      angry: 0,
+      sad: 0,
+      dislike: 0,
+    };
+    reactions.forEach((r) => {
+      counts[r.type]++;
+    });
+    return counts;
+  };
+
+  const getReactionEmoji = (type: ReactionType): string => {
+    const emojiMap: Record<ReactionType, string> = {
+      like: "👍",
+      love: "❤️",
+      funny: "😂",
+      angry: "😡",
+      sad: "😢",
+      dislike: "👎",
+    };
+    return emojiMap[type];
+  };
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      {/* Create Post Section */}
       <Card>
         <CardHeader>
           <CardTitle>Create Post</CardTitle>
@@ -131,15 +211,12 @@ export function PostsFeedPage() {
               onChange={(e) => setContent(e.target.value)}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="post-attachment">Attachment URL (optional)</Label>
-            <Input
-              id="post-attachment"
-              placeholder="https://example.com/file"
-              value={attachement}
-              onChange={(e) => setAttachement(e.target.value)}
-            />
-          </div>
+          <FileUpload
+            label="Attachment (Image or Document)"
+            type="any"
+            currentUrl={attachement}
+            onUploadSuccess={(url) => setAttachement(url)}
+          />
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -157,22 +234,24 @@ export function PostsFeedPage() {
         </CardContent>
       </Card>
 
+      {/* My Posts Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Posts Feed</CardTitle>
+          <CardTitle>My Posts</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {isLoading && (
-            <p className="text-sm text-muted-foreground">Loading feed...</p>
+          {myPostsLoading && (
+            <p className="text-sm text-muted-foreground">
+              Loading your posts...
+            </p>
           )}
-          {isError && (
-            <p className="text-sm text-red-600">Failed to load posts.</p>
-          )}
-          {!isLoading && posts.length === 0 && (
-            <p className="text-sm text-muted-foreground">No posts yet.</p>
+          {!myPostsLoading && myPosts.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              You haven't created any posts yet.
+            </p>
           )}
 
-          {posts.map((post) => {
+          {myPosts.map((post) => {
             const userReaction = post.reactions.find(
               (r) => r.userId === user?.id,
             );
@@ -183,7 +262,7 @@ export function PostsFeedPage() {
                     <div className="h-10 w-10 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center border">
                       {post.user.photoDeProfil ? (
                         <img
-                          src={post.user.photoDeProfil}
+                          src={transformUrl(post.user.photoDeProfil)}
                           alt={post.user.fullName}
                           className="h-full w-full object-cover"
                           onError={(e) => {
@@ -199,46 +278,120 @@ export function PostsFeedPage() {
                     </div>
                     <div>
                       <div className="font-medium">{post.user.fullName}</div>
-                      <div className="text-xs text-gray-500">
-                        {new Date(post.timestamp).toLocaleString()}
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <span>{new Date(post.timestamp).toLocaleString()}</span>
+                        <span
+                          className={`px-2 py-0.5 rounded-full border text-[10px] ${
+                            post.isPublic
+                              ? "border-green-200 text-green-700 bg-green-50"
+                              : "border-yellow-200 text-yellow-700 bg-yellow-50"
+                          }`}
+                        >
+                          {post.isPublic ? "Public" : "Private"}
+                        </span>
                       </div>
                     </div>
                   </div>
                   {user?.id === post.userId && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deletePostMutation.mutate(post.id)}
-                    >
-                      Delete
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          updateVisibilityMutation.mutate({
+                            postId: post.id,
+                            isPublic: !post.isPublic,
+                          })
+                        }
+                        disabled={updateVisibilityMutation.isPending}
+                      >
+                        {post.isPublic ? "Make Private" : "Make Public"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deletePostMutation.mutate(post)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   )}
                 </div>
 
                 <p className="text-sm whitespace-pre-wrap">{post.content}</p>
 
+                {post.publication && (
+                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+                    <div className="flex items-start gap-2">
+                      <span className="text-lg">📚</span>
+                      <div className="flex-1">
+                        <div className="font-medium text-sm text-blue-900">
+                          {post.publication.title}
+                        </div>
+                        <div className="text-xs text-blue-700 mt-1 space-y-1">
+                          {post.publication.publicationDate && (
+                            <div>
+                              Published:{" "}
+                              {new Date(
+                                post.publication.publicationDate,
+                              ).toLocaleDateString()}
+                            </div>
+                          )}
+                          <div>Citations: {post.publication.citationCount}</div>
+                        </div>
+                        {post.publication.googleScholarUrl && (
+                          <a
+                            href={post.publication.googleScholarUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs text-blue-600 underline hover:text-blue-800 inline-block mt-2"
+                          >
+                            View on Google Scholar
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {post.attachement && (
                   <div className="mt-3">
-                    <img
-                      src={post.attachement}
-                      alt="Post attachment"
-                      className="w-full max-h-96 rounded-lg border object-contain bg-gray-50"
-                      onError={(e) => {
-                        console.error(
-                          "Failed to load image:",
-                          post.attachement,
-                        );
-                        // Replace img with link on error
-                        const link = document.createElement("a");
-                        link.href = post.attachement;
-                        link.target = "_blank";
-                        link.rel = "noreferrer";
-                        link.className =
-                          "inline-flex items-center gap-2 text-sm text-blue-600 hover:underline";
-                        link.textContent = "📎 View attachment";
-                        e.currentTarget.replaceWith(link);
-                      }}
-                    />
+                    {isImageUrl(post.attachement) ? (
+                      <img
+                        src={transformUrl(post.attachement)}
+                        alt="Post attachment"
+                        className="w-full max-h-96 rounded-lg border object-contain bg-gray-50"
+                        onError={(e) => {
+                          console.error(
+                            "Failed to load image:",
+                            post.attachement,
+                          );
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : null}
+                    {!isImageUrl(post.attachement) && (
+                      <a
+                        href={transformUrl(post.attachement)}
+                        target="_blank"
+                        rel="noreferrer"
+                        download
+                        className="inline-flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition"
+                      >
+                        <span className="text-3xl">
+                          {getFileIcon(post.attachement)}
+                        </span>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">
+                            {getFileName(post.attachement)}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Click to download
+                          </p>
+                        </div>
+                        <span className="text-gray-400">↓</span>
+                      </a>
+                    )}
                   </div>
                 )}
 
@@ -268,9 +421,31 @@ export function PostsFeedPage() {
                   ))}
                 </div>
 
-                <div className="text-xs text-gray-500">
-                  {post.reactions.length} reactions · {post.comments.length}{" "}
-                  comments
+                <div className="text-xs text-gray-500 flex items-center gap-2">
+                  {post.reactions.length > 0 && (
+                    <div className="flex items-center gap-1">
+                      {Object.entries(getReactionCounts(post.reactions))
+                        .filter(([_, count]) => count > 0)
+                        .slice(0, 3)
+                        .map(([type, count]) => (
+                          <span key={type} title={`${count} ${type}`}>
+                            {getReactionEmoji(type as ReactionType)}
+                            <span className="text-xs font-medium ml-0.5">
+                              {count}
+                            </span>
+                          </span>
+                        ))}
+                      {post.reactions.length > 0 && (
+                        <span>{post.reactions.length}</span>
+                      )}
+                    </div>
+                  )}
+                  {post.reactions.length > 0 && post.comments.length > 0 && (
+                    <span>·</span>
+                  )}
+                  {post.comments.length > 0 && (
+                    <span>{post.comments.length} comments</span>
+                  )}
                 </div>
 
                 <div className="space-y-2">

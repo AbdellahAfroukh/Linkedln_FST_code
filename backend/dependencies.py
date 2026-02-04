@@ -14,6 +14,8 @@ def get_current_user(
     db: Session = Depends(get_db)
 ) -> User:
     """Get current authenticated user from JWT token"""
+    from sqlalchemy.orm import joinedload
+    
     token = credentials.credentials
     payload = AuthService.verify_token(token, token_type="access")
     
@@ -24,7 +26,16 @@ def get_current_user(
             detail="Could not validate credentials"
         )
     
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).options(
+        joinedload(User.university),
+        joinedload(User.etablissement),
+        joinedload(User.departement),
+        joinedload(User.laboratoire),
+        joinedload(User.equipe),
+        joinedload(User.specialite),
+        joinedload(User.thematiqueDeRecherche)
+    ).filter(User.id == user_id).first()
+    
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

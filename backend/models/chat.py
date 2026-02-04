@@ -23,6 +23,8 @@ class Message(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     content = Column(Text, nullable=False)
+    attachment = Column(Text, nullable=True)
+    is_read = Column(Integer, default=0)  # 0 = unread, 1 = read
     timestamp = Column(DateTime,default=datetime.now(timezone.utc))
 
     #Relationships

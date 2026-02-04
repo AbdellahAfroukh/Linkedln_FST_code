@@ -77,6 +77,13 @@ export function GoogleScholarPage() {
       queryClient.invalidateQueries({
         queryKey: ["google-scholar", "publications"],
       });
+      // Invalidate all post-related queries to show new publication posts immediately
+      queryClient.invalidateQueries({
+        queryKey: ["posts", "my-posts"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["posts", "feed"],
+      });
     },
     onError: () => toast.error("Failed to update publication"),
   });
