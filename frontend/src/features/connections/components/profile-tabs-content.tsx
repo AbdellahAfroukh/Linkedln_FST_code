@@ -4,19 +4,23 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import {
   Mail,
   ExternalLink,
   Building2,
   GraduationCap,
   Users,
+  Download,
 } from "lucide-react";
 import type { UserDetailResponse } from "@/types";
 import { postsApi } from "@/api/posts";
 import { projetsApi } from "@/api/projets";
 import { connectionsApi } from "@/api/connections";
+import { cvApi } from "@/api/cv";
 import { transformUrl } from "@/lib/url-utils";
 import { useAuthStore } from "@/store/auth";
+import { toast } from "sonner";
 
 interface ProfileTabsContentProps {
   user: UserDetailResponse;
@@ -51,6 +55,58 @@ export function ProfileTabsContent({
     enabled: activeTab === "mutual",
   });
 
+  const handleDownloadUserCV = async () => {
+    try {
+      toast.info("Generating CV PDF...");
+      const blob = await cvApi.downloadUserCVPDF(user.id);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `CV_${user.nom}_${user.prenom}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success("CV downloaded successfully");
+    } catch (error: any) {
+      // Extract the actual error message from the API response
+      let errorMessage = "Unable to download CV.";
+
+      console.error("CV Download Error:", error); // Debug log
+      console.error("Error Response:", error?.response); // Debug response
+      console.error("Error Response Data:", error?.response?.data); // Debug response data
+
+      // Check for FastAPI error response with detail field
+      if (error?.response?.data) {
+        const data = error.response.data;
+        // If data is an object with detail field
+        if (typeof data === "object" && data.detail) {
+          errorMessage =
+            typeof data.detail === "string"
+              ? data.detail
+              : JSON.stringify(data.detail);
+        }
+        // If data is a string, use it directly
+        else if (typeof data === "string") {
+          errorMessage = data;
+        }
+        // If data has a message field
+        else if (data.message) {
+          errorMessage = data.message;
+        }
+      }
+      // Check for axios error message
+      else if (error?.message) {
+        // Don't show generic "Request failed with status code 404"
+        if (!error.message.includes("Request failed with status code")) {
+          errorMessage = error.message;
+        }
+      }
+
+      toast.error(errorMessage);
+    }
+  };
+
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -80,6 +136,15 @@ export function ProfileTabsContent({
             {user.grade && (
               <p className="text-lg text-muted-foreground">{user.grade}</p>
             )}
+            {user.user_type && (
+              <p className="text-sm text-primary font-semibold capitalize">
+                {user.user_type === "doctorant"
+                  ? "Doctorant"
+                  : user.user_type === "enseignant"
+                    ? "Enseignant"
+                    : user.user_type}
+              </p>
+            )}
             <div className="flex items-center gap-2 mt-2">
               <Mail className="h-4 w-4 text-muted-foreground" />
               <p className="text-sm">{user.email}</p>
@@ -96,6 +161,15 @@ export function ProfileTabsContent({
                 <ExternalLink className="h-3 w-3" />
               </a>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={handleDownloadUserCV}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download CV
+            </Button>
           </div>
         </div>
 

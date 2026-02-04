@@ -47,7 +47,7 @@ export function AppLayout() {
 
   const navItems = [
     { to: "/dashboard", icon: Home, label: "Dashboard" },
-    { to: "/posts", icon: FileText, label: "Posts" },
+    { to: "/posts", icon: FileText, label: "My Posts" },
     { to: "/feed", icon: Rss, label: "Feed" },
     { to: "/connections", icon: Users, label: "Connections" },
     { to: "/chats", icon: MessageSquare, label: "Messages" },

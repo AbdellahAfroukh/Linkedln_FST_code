@@ -127,4 +127,57 @@ export const cvApi = {
     const response = await apiClient.patch(`/cv/experience/${id}`, data);
     return response.data;
   },
+
+  // Delete operations
+  delete: async (): Promise<SuccessResponse> => {
+    const response = await apiClient.delete('/cv/');
+    return response.data;
+  },
+
+  deleteContact: async (id: number): Promise<SuccessResponse> => {
+    const response = await apiClient.delete(`/cv/contact/${id}`);
+    return response.data;
+  },
+
+  deleteFormation: async (id: number): Promise<SuccessResponse> => {
+    const response = await apiClient.delete(`/cv/formation/${id}`);
+    return response.data;
+  },
+
+  deleteCompetence: async (id: number): Promise<SuccessResponse> => {
+    const response = await apiClient.delete(`/cv/competence/${id}`);
+    return response.data;
+  },
+
+  deleteLangue: async (id: number): Promise<SuccessResponse> => {
+    const response = await apiClient.delete(`/cv/langue/${id}`);
+    return response.data;
+  },
+
+  deleteExperience: async (id: number): Promise<SuccessResponse> => {
+    const response = await apiClient.delete(`/cv/experience/${id}`);
+    return response.data;
+  },
+
+  // Download PDF
+  downloadPDF: async (): Promise<Blob> => {
+    const response = await apiClient.get('/cv/download/pdf', {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  // Get CV by user ID (for viewing others' CVs)
+  getUserCV: async (userId: number): Promise<CV> => {
+    const response = await apiClient.get(`/cv/user/${userId}`);
+    return response.data;
+  },
+
+  // Download a user's CV as PDF
+  downloadUserCVPDF: async (userId: number): Promise<Blob> => {
+    const response = await apiClient.get(`/cv/download/user/${userId}/pdf`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
 };

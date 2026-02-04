@@ -18,6 +18,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -39,6 +48,9 @@ import {
   Eye,
   EyeOff,
   GraduationCap,
+  Download,
+  Power,
+  PowerOff,
 } from "lucide-react";
 import type {
   CVCreate,
@@ -53,16 +65,13 @@ export function CVPage() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<
-    | "overview"
-    | "contact"
-    | "formations"
-    | "competences"
-    | "langues"
-    | "experiences"
-  >("overview");
+    "contact" | "formations" | "competences" | "langues" | "experiences"
+  >("contact");
   const [isCreatingCV, setIsCreatingCV] = useState(false);
   const [cvTitle, setCVTitle] = useState("");
   const [cvDescription, setCVDescription] = useState("");
+  const [isEditingCV, setIsEditingCV] = useState(false);
+  const [showDeleteCV, setShowDeleteCV] = useState(false);
 
   // CV Query
   const { data: cv, isLoading: cvLoading } = useQuery({
@@ -84,6 +93,29 @@ export function CVPage() {
     onError: () => toast.error("Failed to create CV"),
   });
 
+  // Update CV Mutation
+  const updateCVMutation = useMutation({
+    mutationFn: (data: { titre?: string; description?: string }) =>
+      cvApi.update(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cv"] });
+      setIsEditingCV(false);
+      toast.success("CV updated successfully");
+    },
+    onError: () => toast.error("Failed to update CV"),
+  });
+
+  // Delete CV Mutation
+  const deleteCVMutation = useMutation({
+    mutationFn: () => cvApi.delete(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cv"] });
+      setShowDeleteCV(false);
+      toast.success("CV deleted successfully");
+    },
+    onError: () => toast.error("Failed to delete CV"),
+  });
+
   // Toggle CV Public Status Mutation
   const togglePublicMutation = useMutation({
     mutationFn: (isPublic: boolean) => cvApi.setPublic(isPublic),
@@ -94,11 +126,16 @@ export function CVPage() {
     onError: () => toast.error("Failed to update CV visibility"),
   });
 
-  const handleTogglePublic = () => {
-    if (cv) {
-      togglePublicMutation.mutate(!cv.isPublic);
-    }
-  };
+  // Toggle CV Enabled Status Mutation
+  const toggleEnabledMutation = useMutation({
+    mutationFn: (enabled: boolean) =>
+      enabled ? cvApi.enable() : cvApi.disable(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cv"] });
+      toast.success("CV status updated");
+    },
+    onError: () => toast.error("Failed to update CV status"),
+  });
 
   const handleCreateCV = () => {
     if (!cvTitle.trim()) {
@@ -109,6 +146,43 @@ export function CVPage() {
       titre: cvTitle.trim(),
       description: cvDescription.trim() || undefined,
     });
+  };
+
+  const handleUpdateCV = () => {
+    updateCVMutation.mutate({
+      titre: cvTitle.trim() || cv?.titre,
+      description: cvDescription.trim() || cv?.description,
+    });
+  };
+
+  const handleTogglePublic = () => {
+    if (cv) {
+      togglePublicMutation.mutate(!cv.isPublic);
+    }
+  };
+
+  const handleToggleEnabled = () => {
+    if (cv) {
+      toggleEnabledMutation.mutate(!cv.cv_enabled);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    try {
+      toast.info("Generating PDF...");
+      const blob = await cvApi.downloadPDF();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `CV_${user?.nom}_${user?.prenom}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success("CV downloaded successfully");
+    } catch (error) {
+      toast.error("Failed to download CV");
+    }
   };
 
   if (
@@ -223,7 +297,7 @@ export function CVPage() {
       <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
         <CardHeader>
           <div className="flex justify-between items-start">
-            <div>
+            <div className="flex-1">
               <CardTitle className="text-3xl">{cv.titre}</CardTitle>
               {cv.description && (
                 <CardDescription className="text-base mt-2">
@@ -232,6 +306,10 @@ export function CVPage() {
               )}
             </div>
             <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
+                <Download className="h-4 w-4 mr-1" />
+                Download PDF
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -250,13 +328,108 @@ export function CVPage() {
                   </>
                 )}
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleToggleEnabled}
+                disabled={toggleEnabledMutation.isPending}
+                className={cv.cv_enabled ? "" : "border-red-300 text-red-700"}
+              >
+                {cv.cv_enabled ? (
+                  <>
+                    <Power className="h-4 w-4 mr-1" />
+                    Enabled
+                  </>
+                ) : (
+                  <>
+                    <PowerOff className="h-4 w-4 mr-1" />
+                    Disabled
+                  </>
+                )}
+              </Button>
+              <Dialog open={isEditingCV} onOpenChange={setIsEditingCV}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Edit2 className="h-4 w-4 mr-1" />
+                    Edit
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Edit CV</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="edit-title">CV Title</Label>
+                      <Input
+                        id="edit-title"
+                        value={cvTitle || cv.titre}
+                        onChange={(e) => setCVTitle(e.target.value)}
+                        className="mt-2"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-description">Description</Label>
+                      <Input
+                        id="edit-description"
+                        value={cvDescription || cv.description || ""}
+                        onChange={(e) => setCVDescription(e.target.value)}
+                        className="mt-2"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleUpdateCV}
+                        disabled={updateCVMutation.isPending}
+                      >
+                        Save Changes
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsEditingCV(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+              <AlertDialog open={showDeleteCV} onOpenChange={setShowDeleteCV}>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowDeleteCV(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete
+                </Button>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete CV</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete this CV? This action
+                      cannot be undone and will remove all associated content.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="flex gap-2 justify-end">
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => deleteCVMutation.mutate()}
+                      disabled={deleteCVMutation.isPending}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Delete CV
+                    </AlertDialogAction>
+                  </div>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         </CardHeader>
       </Card>
 
       {/* Tabs Navigation */}
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         {[
           { id: "contact", label: "Contact", icon: Mail },
           { id: "formations", label: "Education", icon: Book },
@@ -287,11 +460,11 @@ export function CVPage() {
   );
 }
 
-// Contact Section Component
+// ==================== CONTACT SECTION ====================
 function ContactSection({ cv }: { cv: any }) {
-  const [contact, setContact] = useState<any>(null);
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     email: "",
     telephone: "",
@@ -300,7 +473,10 @@ function ContactSection({ cv }: { cv: any }) {
 
   const { data: contacts = [] } = useQuery({
     queryKey: ["cv-contacts"],
-    queryFn: cvApi.listContacts,
+    queryFn: async () => {
+      const data = await cvApi.listContacts();
+      return Array.isArray(data) ? data : [];
+    },
   });
 
   const addContactMutation = useMutation({
@@ -314,12 +490,44 @@ function ContactSection({ cv }: { cv: any }) {
     onError: () => toast.error("Failed to add contact"),
   });
 
+  const updateContactMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<ContactCreate> }) =>
+      cvApi.updateContact(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cv-contacts"] });
+      setFormData({ email: "", telephone: "", adresse: "" });
+      setEditingId(null);
+      setShowForm(false);
+      toast.success("Contact updated");
+    },
+    onError: () => toast.error("Failed to update contact"),
+  });
+
+  const deleteContactMutation = useMutation({
+    mutationFn: (id: number) => cvApi.deleteContact(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cv-contacts"] });
+      toast.success("Contact deleted");
+    },
+    onError: () => toast.error("Failed to delete contact"),
+  });
+
   const handleAddContact = () => {
     if (!formData.email) {
       toast.error("Email is required");
       return;
     }
-    addContactMutation.mutate(formData);
+    if (editingId) {
+      updateContactMutation.mutate({ id: editingId, data: formData });
+    } else {
+      addContactMutation.mutate(formData);
+    }
+  };
+
+  const handleEdit = (contact: any) => {
+    setFormData(contact);
+    setEditingId(contact.id);
+    setShowForm(true);
   };
 
   return (
@@ -364,14 +572,21 @@ function ContactSection({ cv }: { cv: any }) {
             <div className="flex gap-2">
               <Button
                 onClick={handleAddContact}
-                disabled={addContactMutation.isPending}
+                disabled={
+                  addContactMutation.isPending ||
+                  updateContactMutation.isPending
+                }
                 size="sm"
               >
-                Save
+                {editingId ? "Update" : "Save"}
               </Button>
               <Button
                 variant="outline"
-                onClick={() => setShowForm(false)}
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingId(null);
+                  setFormData({ email: "", telephone: "", adresse: "" });
+                }}
                 size="sm"
               >
                 Cancel
@@ -385,19 +600,38 @@ function ContactSection({ cv }: { cv: any }) {
             {contacts.map((contact: any) => (
               <div
                 key={contact.id}
-                className="border rounded-lg p-4 hover:bg-gray-50 transition"
+                className="border rounded-lg p-4 hover:bg-gray-50 transition flex justify-between items-start"
               >
-                <p className="font-medium">{contact.email}</p>
-                {contact.telephone && (
-                  <p className="text-sm text-muted-foreground">
-                    {contact.telephone}
-                  </p>
-                )}
-                {contact.adresse && (
-                  <p className="text-sm text-muted-foreground">
-                    {contact.adresse}
-                  </p>
-                )}
+                <div className="flex-1">
+                  <p className="font-medium">{contact.email}</p>
+                  {contact.telephone && (
+                    <p className="text-sm text-muted-foreground">
+                      {contact.telephone}
+                    </p>
+                  )}
+                  {contact.adresse && (
+                    <p className="text-sm text-muted-foreground">
+                      {contact.adresse}
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEdit(contact)}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteContactMutation.mutate(contact.id)}
+                    disabled={deleteContactMutation.isPending}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -411,10 +645,11 @@ function ContactSection({ cv }: { cv: any }) {
   );
 }
 
-// Formations Section Component
+// ==================== FORMATIONS SECTION ====================
 function FormationsSection({ cv }: { cv: any }) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<FormationCreate>({
     diplome: "",
     etablissement: "",
@@ -425,7 +660,10 @@ function FormationsSection({ cv }: { cv: any }) {
 
   const { data: formations = [] } = useQuery({
     queryKey: ["cv-formations"],
-    queryFn: cvApi.listFormations,
+    queryFn: async () => {
+      const data = await cvApi.listFormations();
+      return Array.isArray(data) ? data : [];
+    },
   });
 
   const addFormationMutation = useMutation({
@@ -445,6 +683,39 @@ function FormationsSection({ cv }: { cv: any }) {
     onError: () => toast.error("Failed to add formation"),
   });
 
+  const updateFormationMutation = useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<FormationCreate>;
+    }) => cvApi.updateFormation(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cv-formations"] });
+      setFormData({
+        diplome: "",
+        etablissement: "",
+        dateDebut: "",
+        dateFin: "",
+        enCours: false,
+      });
+      setEditingId(null);
+      setShowForm(false);
+      toast.success("Formation updated");
+    },
+    onError: () => toast.error("Failed to update formation"),
+  });
+
+  const deleteFormationMutation = useMutation({
+    mutationFn: (id: number) => cvApi.deleteFormation(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cv-formations"] });
+      toast.success("Formation deleted");
+    },
+    onError: () => toast.error("Failed to delete formation"),
+  });
+
   const handleAddFormation = () => {
     if (!formData.diplome || !formData.dateDebut) {
       toast.error("Diploma and start date are required");
@@ -454,7 +725,17 @@ function FormationsSection({ cv }: { cv: any }) {
       ...formData,
       dateFin: formData.enCours ? undefined : formData.dateFin || undefined,
     };
-    addFormationMutation.mutate(data);
+    if (editingId) {
+      updateFormationMutation.mutate({ id: editingId, data });
+    } else {
+      addFormationMutation.mutate(data);
+    }
+  };
+
+  const handleEdit = (formation: any) => {
+    setFormData(formation);
+    setEditingId(formation.id);
+    setShowForm(true);
   };
 
   return (
@@ -501,6 +782,7 @@ function FormationsSection({ cv }: { cv: any }) {
               onChange={(e) =>
                 setFormData({ ...formData, dateFin: e.target.value })
               }
+              disabled={formData.enCours}
             />
             <label className="flex items-center gap-2">
               <input
@@ -515,14 +797,27 @@ function FormationsSection({ cv }: { cv: any }) {
             <div className="flex gap-2">
               <Button
                 onClick={handleAddFormation}
-                disabled={addFormationMutation.isPending}
+                disabled={
+                  addFormationMutation.isPending ||
+                  updateFormationMutation.isPending
+                }
                 size="sm"
               >
-                Save
+                {editingId ? "Update" : "Save"}
               </Button>
               <Button
                 variant="outline"
-                onClick={() => setShowForm(false)}
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingId(null);
+                  setFormData({
+                    diplome: "",
+                    etablissement: "",
+                    dateDebut: "",
+                    dateFin: "",
+                    enCours: false,
+                  });
+                }}
                 size="sm"
               >
                 Cancel
@@ -536,20 +831,39 @@ function FormationsSection({ cv }: { cv: any }) {
             {formations.map((formation: any) => (
               <div
                 key={formation.id}
-                className="border-l-4 border-green-500 rounded-lg p-4 bg-green-50"
+                className="border-l-4 border-green-500 rounded-lg p-4 bg-green-50 flex justify-between items-start"
               >
-                <p className="font-semibold text-lg">{formation.diplome}</p>
-                {formation.etablissement && (
-                  <p className="text-sm text-muted-foreground">
-                    {formation.etablissement}
+                <div className="flex-1">
+                  <p className="font-semibold text-lg">{formation.diplome}</p>
+                  {formation.etablissement && (
+                    <p className="text-sm text-muted-foreground">
+                      {formation.etablissement}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {new Date(formation.dateDebut).toLocaleDateString()} -{" "}
+                    {formation.dateFin
+                      ? new Date(formation.dateFin).toLocaleDateString()
+                      : "Present"}
                   </p>
-                )}
-                <p className="text-xs text-muted-foreground mt-1">
-                  {new Date(formation.dateDebut).toLocaleDateString()} -{" "}
-                  {formation.dateFin
-                    ? new Date(formation.dateFin).toLocaleDateString()
-                    : "Present"}
-                </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEdit(formation)}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteFormationMutation.mutate(formation.id)}
+                    disabled={deleteFormationMutation.isPending}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -563,10 +877,11 @@ function FormationsSection({ cv }: { cv: any }) {
   );
 }
 
-// Experiences Section Component
+// ==================== EXPERIENCES SECTION ====================
 function ExperiencesSection({ cv }: { cv: any }) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<ExperienceCreate>({
     poste: "",
     entreprise: "",
@@ -578,7 +893,10 @@ function ExperiencesSection({ cv }: { cv: any }) {
 
   const { data: experiences = [] } = useQuery({
     queryKey: ["cv-experiences"],
-    queryFn: cvApi.listExperiences,
+    queryFn: async () => {
+      const data = await cvApi.listExperiences();
+      return Array.isArray(data) ? data : [];
+    },
   });
 
   const addExperienceMutation = useMutation({
@@ -599,6 +917,40 @@ function ExperiencesSection({ cv }: { cv: any }) {
     onError: () => toast.error("Failed to add experience"),
   });
 
+  const updateExperienceMutation = useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<ExperienceCreate>;
+    }) => cvApi.updateExperience(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cv-experiences"] });
+      setFormData({
+        poste: "",
+        entreprise: "",
+        description: "",
+        dateDebut: "",
+        dateFin: "",
+        enCours: false,
+      });
+      setEditingId(null);
+      setShowForm(false);
+      toast.success("Experience updated");
+    },
+    onError: () => toast.error("Failed to update experience"),
+  });
+
+  const deleteExperienceMutation = useMutation({
+    mutationFn: (id: number) => cvApi.deleteExperience(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cv-experiences"] });
+      toast.success("Experience deleted");
+    },
+    onError: () => toast.error("Failed to delete experience"),
+  });
+
   const handleAddExperience = () => {
     if (!formData.poste || !formData.dateDebut) {
       toast.error("Position and start date are required");
@@ -608,7 +960,17 @@ function ExperiencesSection({ cv }: { cv: any }) {
       ...formData,
       dateFin: formData.enCours ? undefined : formData.dateFin || undefined,
     };
-    addExperienceMutation.mutate(data);
+    if (editingId) {
+      updateExperienceMutation.mutate({ id: editingId, data });
+    } else {
+      addExperienceMutation.mutate(data);
+    }
+  };
+
+  const handleEdit = (experience: any) => {
+    setFormData(experience);
+    setEditingId(experience.id);
+    setShowForm(true);
   };
 
   return (
@@ -664,6 +1026,7 @@ function ExperiencesSection({ cv }: { cv: any }) {
               onChange={(e) =>
                 setFormData({ ...formData, dateFin: e.target.value })
               }
+              disabled={formData.enCours}
             />
             <label className="flex items-center gap-2">
               <input
@@ -678,14 +1041,28 @@ function ExperiencesSection({ cv }: { cv: any }) {
             <div className="flex gap-2">
               <Button
                 onClick={handleAddExperience}
-                disabled={addExperienceMutation.isPending}
+                disabled={
+                  addExperienceMutation.isPending ||
+                  updateExperienceMutation.isPending
+                }
                 size="sm"
               >
-                Save
+                {editingId ? "Update" : "Save"}
               </Button>
               <Button
                 variant="outline"
-                onClick={() => setShowForm(false)}
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingId(null);
+                  setFormData({
+                    poste: "",
+                    entreprise: "",
+                    description: "",
+                    dateDebut: "",
+                    dateFin: "",
+                    enCours: false,
+                  });
+                }}
                 size="sm"
               >
                 Cancel
@@ -699,23 +1076,44 @@ function ExperiencesSection({ cv }: { cv: any }) {
             {experiences.map((experience: any) => (
               <div
                 key={experience.id}
-                className="border-l-4 border-orange-500 rounded-lg p-4 bg-orange-50"
+                className="border-l-4 border-orange-500 rounded-lg p-4 bg-orange-50 flex justify-between items-start"
               >
-                <p className="font-semibold text-lg">{experience.poste}</p>
-                {experience.entreprise && (
-                  <p className="text-sm text-muted-foreground">
-                    {experience.entreprise}
+                <div className="flex-1">
+                  <p className="font-semibold text-lg">{experience.poste}</p>
+                  {experience.entreprise && (
+                    <p className="text-sm text-muted-foreground">
+                      {experience.entreprise}
+                    </p>
+                  )}
+                  {experience.description && (
+                    <p className="text-sm mt-2">{experience.description}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {new Date(experience.dateDebut).toLocaleDateString()} -{" "}
+                    {experience.dateFin
+                      ? new Date(experience.dateFin).toLocaleDateString()
+                      : "Present"}
                   </p>
-                )}
-                {experience.description && (
-                  <p className="text-sm mt-2">{experience.description}</p>
-                )}
-                <p className="text-xs text-muted-foreground mt-2">
-                  {new Date(experience.dateDebut).toLocaleDateString()} -{" "}
-                  {experience.dateFin
-                    ? new Date(experience.dateFin).toLocaleDateString()
-                    : "Present"}
-                </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEdit(experience)}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      deleteExperienceMutation.mutate(experience.id)
+                    }
+                    disabled={deleteExperienceMutation.isPending}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -729,10 +1127,11 @@ function ExperiencesSection({ cv }: { cv: any }) {
   );
 }
 
-// Competences Section Component
+// ==================== COMPETENCES SECTION ====================
 function CompetencesSection({ cv }: { cv: any }) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<CompetenceCreate>({
     nom: "",
     niveau: "intermediaire",
@@ -740,7 +1139,10 @@ function CompetencesSection({ cv }: { cv: any }) {
 
   const { data: competences = [] } = useQuery({
     queryKey: ["cv-competences"],
-    queryFn: cvApi.listCompetences,
+    queryFn: async () => {
+      const data = await cvApi.listCompetences();
+      return Array.isArray(data) ? data : [];
+    },
   });
 
   const addCompetenceMutation = useMutation({
@@ -754,12 +1156,49 @@ function CompetencesSection({ cv }: { cv: any }) {
     onError: () => toast.error("Failed to add skill"),
   });
 
+  const updateCompetenceMutation = useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<CompetenceCreate>;
+    }) => cvApi.updateCompetence(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cv-competences"] });
+      setFormData({ nom: "", niveau: "intermediaire" });
+      setEditingId(null);
+      setShowForm(false);
+      toast.success("Skill updated");
+    },
+    onError: () => toast.error("Failed to update skill"),
+  });
+
+  const deleteCompetenceMutation = useMutation({
+    mutationFn: (id: number) => cvApi.deleteCompetence(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cv-competences"] });
+      toast.success("Skill deleted");
+    },
+    onError: () => toast.error("Failed to delete skill"),
+  });
+
   const handleAddCompetence = () => {
     if (!formData.nom.trim()) {
       toast.error("Skill name is required");
       return;
     }
-    addCompetenceMutation.mutate(formData);
+    if (editingId) {
+      updateCompetenceMutation.mutate({ id: editingId, data: formData });
+    } else {
+      addCompetenceMutation.mutate(formData);
+    }
+  };
+
+  const handleEdit = (competence: any) => {
+    setFormData(competence);
+    setEditingId(competence.id);
+    setShowForm(true);
   };
 
   return (
@@ -805,14 +1244,21 @@ function CompetencesSection({ cv }: { cv: any }) {
             <div className="flex gap-2">
               <Button
                 onClick={handleAddCompetence}
-                disabled={addCompetenceMutation.isPending}
+                disabled={
+                  addCompetenceMutation.isPending ||
+                  updateCompetenceMutation.isPending
+                }
                 size="sm"
               >
-                Save
+                {editingId ? "Update" : "Save"}
               </Button>
               <Button
                 variant="outline"
-                onClick={() => setShowForm(false)}
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingId(null);
+                  setFormData({ nom: "", niveau: "intermediaire" });
+                }}
                 size="sm"
               >
                 Cancel
@@ -826,12 +1272,29 @@ function CompetencesSection({ cv }: { cv: any }) {
             {competences.map((competence: any) => (
               <div
                 key={competence.id}
-                className="px-3 py-1 rounded-full bg-purple-100 text-purple-800 text-sm flex items-center gap-2"
+                className="px-3 py-1 rounded-full bg-purple-100 text-purple-800 text-sm flex items-center gap-2 group"
               >
                 {competence.nom}
                 <span className="text-xs opacity-75">
                   ({competence.niveau})
                 </span>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => handleEdit(competence)}
+                    className="hover:text-purple-900"
+                  >
+                    <Edit2 className="h-3 w-3" />
+                  </button>
+                  <button
+                    onClick={() =>
+                      deleteCompetenceMutation.mutate(competence.id)
+                    }
+                    disabled={deleteCompetenceMutation.isPending}
+                    className="hover:text-red-600"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -845,10 +1308,11 @@ function CompetencesSection({ cv }: { cv: any }) {
   );
 }
 
-// Langues Section Component
+// ==================== LANGUES SECTION ====================
 function LanguesSection({ cv }: { cv: any }) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<LangueCreate>({
     nom: "",
     niveau: "B1",
@@ -856,7 +1320,10 @@ function LanguesSection({ cv }: { cv: any }) {
 
   const { data: langues = [] } = useQuery({
     queryKey: ["cv-langues"],
-    queryFn: cvApi.listLangues,
+    queryFn: async () => {
+      const data = await cvApi.listLangues();
+      return Array.isArray(data) ? data : [];
+    },
   });
 
   const addLangueMutation = useMutation({
@@ -870,12 +1337,44 @@ function LanguesSection({ cv }: { cv: any }) {
     onError: () => toast.error("Failed to add language"),
   });
 
+  const updateLangueMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<LangueCreate> }) =>
+      cvApi.updateLangue(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cv-langues"] });
+      setFormData({ nom: "", niveau: "B1" });
+      setEditingId(null);
+      setShowForm(false);
+      toast.success("Language updated");
+    },
+    onError: () => toast.error("Failed to update language"),
+  });
+
+  const deleteLangueMutation = useMutation({
+    mutationFn: (id: number) => cvApi.deleteLangue(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cv-langues"] });
+      toast.success("Language deleted");
+    },
+    onError: () => toast.error("Failed to delete language"),
+  });
+
   const handleAddLangue = () => {
     if (!formData.nom.trim()) {
       toast.error("Language name is required");
       return;
     }
-    addLangueMutation.mutate(formData);
+    if (editingId) {
+      updateLangueMutation.mutate({ id: editingId, data: formData });
+    } else {
+      addLangueMutation.mutate(formData);
+    }
+  };
+
+  const handleEdit = (langue: any) => {
+    setFormData(langue);
+    setEditingId(langue.id);
+    setShowForm(true);
   };
 
   return (
@@ -923,14 +1422,20 @@ function LanguesSection({ cv }: { cv: any }) {
             <div className="flex gap-2">
               <Button
                 onClick={handleAddLangue}
-                disabled={addLangueMutation.isPending}
+                disabled={
+                  addLangueMutation.isPending || updateLangueMutation.isPending
+                }
                 size="sm"
               >
-                Save
+                {editingId ? "Update" : "Save"}
               </Button>
               <Button
                 variant="outline"
-                onClick={() => setShowForm(false)}
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingId(null);
+                  setFormData({ nom: "", niveau: "B1" });
+                }}
                 size="sm"
               >
                 Cancel
@@ -944,12 +1449,31 @@ function LanguesSection({ cv }: { cv: any }) {
             {langues.map((langue: any) => (
               <div
                 key={langue.id}
-                className="border-l-4 border-blue-500 rounded-lg p-4 bg-blue-50"
+                className="border-l-4 border-blue-500 rounded-lg p-4 bg-blue-50 flex justify-between items-start"
               >
-                <p className="font-semibold">{langue.nom}</p>
-                <p className="text-sm text-muted-foreground">
-                  Level: {langue.niveau}
-                </p>
+                <div className="flex-1">
+                  <p className="font-semibold">{langue.nom}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Level: {langue.niveau}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEdit(langue)}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteLangueMutation.mutate(langue.id)}
+                    disabled={deleteLangueMutation.isPending}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

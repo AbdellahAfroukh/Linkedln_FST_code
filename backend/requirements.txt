@@ -18,5 +18,8 @@ beautifulsoup4
 requests
 lxml
 
+# PDF Generation
+reportlab
+
 pydantic-settings
 argon2-cffi
