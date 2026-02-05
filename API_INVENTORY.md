@@ -893,6 +893,42 @@
 
 ---
 
+### 9. Uploads (`/upload`)
+
+**Tag**: Upload  
+**Auth Required**: All endpoints require authentication
+
+**POST `/upload/image`**
+
+- Upload image (jpg, jpeg, png, gif, webp, svg)
+- Body: `multipart/form-data` with `file`
+- Response:
+  ```json
+  {
+    "url": "/upload/files/<filename>",
+    "filename": "original-name.jpg"
+  }
+  ```
+
+**POST `/upload/document`**
+
+- Upload document (pdf, doc, docx, txt, xls, xlsx)
+- Body: `multipart/form-data` with `file`
+- Response:
+  ```json
+  {
+    "url": "/upload/files/<filename>",
+    "filename": "original-name.pdf"
+  }
+  ```
+
+**GET `/upload/files/{filename}`**
+
+- Serve uploaded file
+- Response: File stream (200)
+
+---
+
 ## Common Response Patterns
 
 ### Success Responses

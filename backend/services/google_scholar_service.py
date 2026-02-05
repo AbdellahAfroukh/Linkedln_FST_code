@@ -169,10 +169,25 @@ class GoogleScholarService:
         try:
             response = requests.get(base_url, headers=headers, timeout=15)
             response.raise_for_status()
+        except requests.Timeout:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Google Scholar request timed out. Please try again in a few moments."
+            )
+        except requests.HTTPError as e:
+            if e.response.status_code == 429:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Google Scholar rate limit reached. Please wait a few minutes and try again."
+                )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Google Scholar returned error: {e.response.status_code}. They may be blocking automated requests."
+            )
         except requests.RequestException as e:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Failed to fetch Google Scholar profile: {str(e)}"
+                detail=f"Failed to connect to Google Scholar. Please try again later. Error: {str(e)}"
             )
         
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -403,7 +418,14 @@ class GoogleScholarService:
     @staticmethod
     def delete_google_scholar_integration(db: Session, user: User):
         """Unlink Google Scholar account"""
-        integration = GoogleScholarService.get_google_scholar_integration(db, user)
+        # Query integration without raising error if not found
+        integration = db.query(GoogleScholarIntegration).filter(
+            GoogleScholarIntegration.userId == user.id
+        ).first()
+        
+        if not integration:
+            # Return success even if no integration exists
+            return {'message': 'Google Scholar account unlinked successfully'}
         
         db.delete(integration)
         db.commit()

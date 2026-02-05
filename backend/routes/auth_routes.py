@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from database import get_db
 from services.authentification import AuthService
+from services.admin_service import AdminService
 from schemas.auth_schemas import (
     UserRegister, 
     UserLogin, 
@@ -553,3 +554,12 @@ def get_user_profile(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user_to_response(user)
+
+
+@router.get("/platform-stats")
+def get_public_platform_stats(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get public platform statistics (available to authenticated users)"""
+    return AdminService.get_platform_statistics(db=db)

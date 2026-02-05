@@ -15,6 +15,10 @@ export function GoogleScholarPage() {
     queryKey: ["google-scholar", "integration"],
     queryFn: googleScholarApi.getIntegration,
     retry: false,
+    meta: {
+      // Suppress 404 errors in console - it's normal to not have an integration
+      ignoreGlobalErrorHandler: true,
+    },
   });
 
   const integration = integrationQuery.data;
@@ -61,7 +65,11 @@ export function GoogleScholarPage() {
       });
       toast.success(data.message || "Publications synced");
     },
-    onError: () => toast.error("Failed to sync publications"),
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || "Failed to sync publications";
+      toast.error(message);
+    },
   });
 
   const publicationsQuery = useQuery({

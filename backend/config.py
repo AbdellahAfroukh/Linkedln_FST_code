@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     OTP_ISSUER: str = "AcademicPlatform"
     
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+    CORS_ORIGINS: List[str] = ["http://localhost:5713", "http://localhost:8000"]
     
     # Application
     APP_NAME: str = "Academic Platform API"

@@ -16,14 +16,19 @@ import {
   Shield,
   Rss,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { transformUrl } from "@/lib/url-utils";
 import { useIncomingRequestsCount } from "@/features/connections/hooks/use-incoming-requests-count";
 import { useChatsCount } from "@/features/chats/hooks/use-chats-count";
 
 export function AppLayout() {
-  const { user, logout } = useAuthStore();
+  const { user, logout, fetchUser } = useAuthStore();
+
+  // Fetch fresh user data on mount to ensure profile picture is current
+  useEffect(() => {
+    fetchUser();
+  }, []);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
