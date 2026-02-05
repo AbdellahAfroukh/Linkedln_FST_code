@@ -23,4 +23,5 @@
 # Ignore uploads contents but keep folders
 **/uploads/*
 **/uploads/**
+!**/uploads/.gitkeep
     
