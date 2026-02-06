@@ -19,10 +19,11 @@ import { toast } from "sonner";
 import { Loader2, Shield, User } from "lucide-react";
 import { FileUpload } from "@/components/file-upload";
 import { transformUrl } from "@/lib/url-utils";
+import { useTranslation } from "react-i18next";
 
 const profileUpdateSchema = z.object({
-  nom: z.string().min(1, "Last name is required"),
-  prenom: z.string().min(1, "First name is required"),
+  nom: z.string().min(1, "profile.lastNameRequired"),
+  prenom: z.string().min(1, "profile.firstNameRequired"),
   grade: z.string().optional().nullable(),
   dateDeNaissance: z.string().optional().nullable(),
   photoDeProfil: z.string().optional().nullable(),
@@ -37,13 +38,14 @@ const profileUpdateSchema = z.object({
 });
 
 const disable2FASchema = z.object({
-  password: z.string().min(1, "Password is required"),
+  password: z.string().min(1, "profile.passwordRequired"),
 });
 
 type ProfileUpdateForm = z.infer<typeof profileUpdateSchema>;
 type Disable2FAForm = z.infer<typeof disable2FASchema>;
 
 export function ProfileSettingsPage() {
+  const { t } = useTranslation();
   const { user, setUser, fetchUser } = useAuthStore();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"profile" | "security">("profile");
@@ -189,10 +191,12 @@ export function ProfileSettingsPage() {
       setUser(data);
       queryClient.invalidateQueries({ queryKey: ["user"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
-      toast.success("Profile updated successfully!");
+      toast.success(t("profile.profileUpdated"));
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.detail || "Failed to update profile");
+      toast.error(
+        error.response?.data?.detail || t("profile.failedToUpdateProfile"),
+      );
     },
   });
 
@@ -203,10 +207,12 @@ export function ProfileSettingsPage() {
       setQrCode(data.qr_code);
       setOtpSecret(data.secret);
       setShow2FASetup(true);
-      toast.success("Scan the QR code with your authenticator app");
+      toast.success(t("profile.scanQRCode"));
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.detail || "Failed to setup 2FA");
+      toast.error(
+        error.response?.data?.detail || t("profile.failedToSetup2FA"),
+      );
     },
   });
 
@@ -215,7 +221,7 @@ export function ProfileSettingsPage() {
     mutationFn: (token: string) =>
       authApi.enable2FA({ token, email: user?.email || "" }),
     onSuccess: async () => {
-      toast.success("2FA enabled successfully!");
+      toast.success(t("profile.2FAEnabled"));
       setShow2FASetup(false);
       setQrCode(null);
       setOtpSecret(null);
@@ -225,7 +231,7 @@ export function ProfileSettingsPage() {
       setUser(updatedUser);
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.detail || "Invalid OTP token");
+      toast.error(error.response?.data?.detail || t("profile.invalidOTP"));
     },
   });
 
@@ -233,14 +239,16 @@ export function ProfileSettingsPage() {
   const disable2FAMutation = useMutation({
     mutationFn: authApi.disable2FA,
     onSuccess: async () => {
-      toast.success("2FA disabled successfully!");
+      toast.success(t("profile.2FADisabled"));
       disable2FAForm.reset();
       // Refresh user data
       const updatedUser = await authApi.getMe();
       setUser(updatedUser);
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.detail || "Failed to disable 2FA");
+      toast.error(
+        error.response?.data?.detail || t("profile.failedToDisable2FA"),
+      );
     },
   });
 
@@ -272,7 +280,7 @@ export function ProfileSettingsPage() {
 
   const handleEnable2FA = () => {
     if (!otpToken) {
-      toast.error("Please enter the OTP token");
+      toast.error(t("profile.enterOTP"));
       return;
     }
     enable2FAMutation.mutate(otpToken);
@@ -281,7 +289,9 @@ export function ProfileSettingsPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Profile Settings</h1>
+        <h1 className="text-3xl font-bold mb-6">
+          {t("profile.profileSettings")}
+        </h1>
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
@@ -291,7 +301,7 @@ export function ProfileSettingsPage() {
             className="flex items-center gap-2"
           >
             <User className="h-4 w-4" />
-            Profile Information
+            {t("profile.profileInformation")}
           </Button>
           <Button
             variant={activeTab === "security" ? "default" : "outline"}
@@ -299,7 +309,7 @@ export function ProfileSettingsPage() {
             className="flex items-center gap-2"
           >
             <Shield className="h-4 w-4" />
-            Security (2FA)
+            {t("profile.security")}
           </Button>
         </div>
 
@@ -325,9 +335,9 @@ export function ProfileSettingsPage() {
                   )}
                 </div>
                 <div>
-                  <CardTitle>Update Profile Information</CardTitle>
+                  <CardTitle>{t("profile.updateProfileInformation")}</CardTitle>
                   <CardDescription>
-                    Update your personal and organizational information
+                    {t("profile.updateDescription")}
                   </CardDescription>
                 </div>
               </div>
@@ -339,10 +349,10 @@ export function ProfileSettingsPage() {
               >
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="prenom">First Name *</Label>
+                    <Label htmlFor="prenom">{t("profile.firstName")} *</Label>
                     <Input
                       id="prenom"
-                      placeholder="John"
+                      placeholder={t("profile.firstNamePlaceholder")}
                       value={profileForm.watch("prenom") || ""}
                       onChange={(e) =>
                         profileForm.setValue("prenom", e.target.value)
@@ -356,10 +366,10 @@ export function ProfileSettingsPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="nom">Last Name *</Label>
+                    <Label htmlFor="nom">{t("profile.lastName")} *</Label>
                     <Input
                       id="nom"
-                      placeholder="Doe"
+                      placeholder={t("profile.lastNamePlaceholder")}
                       value={profileForm.watch("nom") || ""}
                       onChange={(e) =>
                         profileForm.setValue("nom", e.target.value)
@@ -375,10 +385,10 @@ export function ProfileSettingsPage() {
 
                 {user?.user_type === "enseignant" && (
                   <div className="space-y-2">
-                    <Label htmlFor="grade">Grade</Label>
+                    <Label htmlFor="grade">{t("profile.grade")}</Label>
                     <Input
                       id="grade"
-                      placeholder="Professor, Assistant Professor, etc."
+                      placeholder={t("profile.gradePlaceholder")}
                       value={profileForm.watch("grade") || ""}
                       onChange={(e) =>
                         profileForm.setValue("grade", e.target.value)
@@ -388,7 +398,9 @@ export function ProfileSettingsPage() {
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="dateDeNaissance">Date of Birth</Label>
+                  <Label htmlFor="dateDeNaissance">
+                    {t("profile.dateOfBirth")}
+                  </Label>
                   <Input
                     id="dateDeNaissance"
                     type="date"
@@ -400,7 +412,7 @@ export function ProfileSettingsPage() {
                 </div>
 
                 <FileUpload
-                  label="Profile Photo"
+                  label={t("profile.profilePhoto")}
                   type="image"
                   currentUrl={profileForm.watch("photoDeProfil") || ""}
                   onUploadSuccess={(url) =>
@@ -409,7 +421,9 @@ export function ProfileSettingsPage() {
                 />
 
                 <div className="space-y-2">
-                  <Label htmlFor="universityId">University</Label>
+                  <Label htmlFor="universityId">
+                    {t("profile.university")}
+                  </Label>
                   <select
                     id="universityId"
                     className="w-full px-3 py-2 border rounded-md"
@@ -424,7 +438,7 @@ export function ProfileSettingsPage() {
                       setSelectedEtablissementId(null);
                     }}
                   >
-                    <option value="">Select University</option>
+                    <option value="">{t("profile.selectUniversity")}</option>
                     {universities?.map((uni) => (
                       <option key={uni.id} value={uni.id}>
                         {uni.nom}
@@ -434,7 +448,9 @@ export function ProfileSettingsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="etablissementId">Etablissement</Label>
+                  <Label htmlFor="etablissementId">
+                    {t("profile.etablissement")}
+                  </Label>
                   <select
                     id="etablissementId"
                     className="w-full px-3 py-2 border rounded-md"
@@ -449,7 +465,7 @@ export function ProfileSettingsPage() {
                     }}
                     disabled={!selectedUniversityId}
                   >
-                    <option value="">Select Etablissement</option>
+                    <option value="">{t("profile.selectEtablissement")}</option>
                     {filteredEtablissements?.map((etab) => (
                       <option key={etab.id} value={etab.id}>
                         {etab.nom}
@@ -459,7 +475,9 @@ export function ProfileSettingsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="departementId">Departement</Label>
+                  <Label htmlFor="departementId">
+                    {t("profile.departement")}
+                  </Label>
                   <select
                     id="departementId"
                     className="w-full px-3 py-2 border rounded-md"
@@ -472,7 +490,7 @@ export function ProfileSettingsPage() {
                     }}
                     disabled={!selectedEtablissementId}
                   >
-                    <option value="">Select Departement</option>
+                    <option value="">{t("profile.selectDepartement")}</option>
                     {filteredDepartements?.map((dept) => (
                       <option key={dept.id} value={dept.id}>
                         {dept.nom}
@@ -482,7 +500,9 @@ export function ProfileSettingsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="laboratoireId">Laboratoire</Label>
+                  <Label htmlFor="laboratoireId">
+                    {t("profile.laboratoire")}
+                  </Label>
                   <select
                     id="laboratoireId"
                     className="w-full px-3 py-2 border rounded-md"
@@ -495,7 +515,7 @@ export function ProfileSettingsPage() {
                     }}
                     disabled={!selectedUniversityId}
                   >
-                    <option value="">Select Laboratoire</option>
+                    <option value="">{t("profile.selectLaboratoire")}</option>
                     {filteredLaboratoires?.map((lab) => (
                       <option key={lab.id} value={lab.id}>
                         {lab.nom}
@@ -505,7 +525,7 @@ export function ProfileSettingsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="equipeId">Equipe</Label>
+                  <Label htmlFor="equipeId">{t("profile.equipe")}</Label>
                   <select
                     id="equipeId"
                     className="w-full px-3 py-2 border rounded-md"
@@ -518,7 +538,7 @@ export function ProfileSettingsPage() {
                     }}
                     disabled={!selectedUniversityId}
                   >
-                    <option value="">Select Equipe</option>
+                    <option value="">{t("profile.selectEquipe")}</option>
                     {filteredEquipes?.map((equipe) => (
                       <option key={equipe.id} value={equipe.id}>
                         {equipe.nom}
@@ -528,7 +548,7 @@ export function ProfileSettingsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Specialites (Select all that apply)</Label>
+                  <Label>{t("profile.specialites")}</Label>
                   <div className="border rounded-md p-4 max-h-48 overflow-y-auto bg-gray-50">
                     <div className="grid grid-cols-1 gap-2">
                       {specialites?.map((spec) => (
@@ -568,9 +588,7 @@ export function ProfileSettingsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>
-                    Thematiques de Recherche (Select all that apply)
-                  </Label>
+                  <Label>{t("profile.thematiques")}</Label>
                   <div className="border rounded-md p-4 max-h-48 overflow-y-auto bg-gray-50">
                     <div className="grid grid-cols-1 gap-2">
                       {thematiques?.map((them) => (
@@ -612,10 +630,12 @@ export function ProfileSettingsPage() {
 
                 {user?.user_type === "enseignant" && (
                   <div className="space-y-2">
-                    <Label htmlFor="numeroDeSomme">Numero de Somme</Label>
+                    <Label htmlFor="numeroDeSomme">
+                      {t("profile.numeroDeSomme")}
+                    </Label>
                     <Input
                       id="numeroDeSomme"
-                      placeholder="Enter numero de somme"
+                      placeholder={t("profile.numeroDeSommePlaceholder")}
                       value={profileForm.watch("numeroDeSomme") || ""}
                       onChange={(e) =>
                         profileForm.setValue("numeroDeSomme", e.target.value)
@@ -632,7 +652,7 @@ export function ProfileSettingsPage() {
                   {updateProfileMutation.isPending && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  Update Profile
+                  {t("profile.updateProfile")}
                 </Button>
               </form>
             </CardContent>
@@ -644,18 +664,20 @@ export function ProfileSettingsPage() {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Two-Factor Authentication (2FA)</CardTitle>
+                <CardTitle>{t("profile.twoFactorAuth")}</CardTitle>
                 <CardDescription>
-                  Add an extra layer of security to your account
+                  {t("profile.twoFactorAuthDescription")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
-                      <p className="font-medium">2FA Status</p>
+                      <p className="font-medium">{t("profile.2FAStatus")}</p>
                       <p className="text-sm text-gray-600">
-                        {user?.otp_configured ? "Enabled" : "Disabled"}
+                        {user?.otp_configured
+                          ? t("profile.enabled")
+                          : t("profile.disabled")}
                       </p>
                     </div>
                     <div
@@ -665,7 +687,9 @@ export function ProfileSettingsPage() {
                           : "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {user?.otp_configured ? "Active" : "Inactive"}
+                      {user?.otp_configured
+                        ? t("profile.active")
+                        : t("profile.inactive")}
                     </div>
                   </div>
 
@@ -680,13 +704,13 @@ export function ProfileSettingsPage() {
                           {setup2FAMutation.isPending && (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           )}
-                          Enable 2FA
+                          {t("profile.enable2FA")}
                         </Button>
                       ) : (
                         <div className="space-y-4">
                           <div className="text-center">
                             <p className="font-medium mb-2">
-                              Scan this QR code with your authenticator app
+                              {t("profile.scanQRInstruction")}
                             </p>
                             {qrCode && (
                               <div className="flex justify-center mb-4">
@@ -699,7 +723,7 @@ export function ProfileSettingsPage() {
                             )}
                             {otpSecret && (
                               <p className="text-sm text-gray-600 mb-4">
-                                Or enter this secret key manually:{" "}
+                                {t("profile.orEnterSecret")}{" "}
                                 <code className="bg-gray-100 px-2 py-1 rounded">
                                   {otpSecret}
                                 </code>
@@ -709,11 +733,11 @@ export function ProfileSettingsPage() {
 
                           <div className="space-y-2">
                             <Label htmlFor="otpToken">
-                              Enter the 6-digit code from your app
+                              {t("profile.enter6DigitCode")}
                             </Label>
                             <Input
                               id="otpToken"
-                              placeholder="123456"
+                              placeholder={t("profile.otpPlaceholder")}
                               value={otpToken}
                               onChange={(e) => setOtpToken(e.target.value)}
                               maxLength={6}
@@ -729,7 +753,7 @@ export function ProfileSettingsPage() {
                               {enable2FAMutation.isPending && (
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                               )}
-                              Verify and Enable
+                              {t("profile.verifyAndEnable")}
                             </Button>
                             <Button
                               variant="outline"
@@ -740,7 +764,7 @@ export function ProfileSettingsPage() {
                                 setOtpToken("");
                               }}
                             >
-                              Cancel
+                              {t("common.cancel")}
                             </Button>
                           </div>
                         </div>
@@ -753,12 +777,12 @@ export function ProfileSettingsPage() {
                     >
                       <div className="space-y-2">
                         <Label htmlFor="password">
-                          Enter your password to disable 2FA
+                          {t("profile.enterPasswordToDisable2FA")}
                         </Label>
                         <Input
                           id="password"
                           type="password"
-                          placeholder="Your password"
+                          placeholder={t("profile.yourPassword")}
                           {...disable2FAForm.register("password")}
                         />
                         {disable2FAForm.formState.errors.password && (
@@ -777,7 +801,7 @@ export function ProfileSettingsPage() {
                         {disable2FAMutation.isPending && (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         )}
-                        Disable 2FA
+                        {t("profile.disable2FA")}
                       </Button>
                     </form>
                   )}

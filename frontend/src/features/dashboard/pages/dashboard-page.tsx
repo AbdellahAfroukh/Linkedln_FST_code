@@ -1,6 +1,7 @@
 import { useAuthStore } from "@/store/auth";
 import { useQuery } from "@tanstack/react-query";
 import { statsApi } from "@/api/stats";
+import { useTranslation } from "react-i18next";
 import {
   Card,
   CardContent,
@@ -25,6 +26,7 @@ import {
 } from "lucide-react";
 
 export function DashboardPage() {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
 
   const { data: stats } = useQuery({
@@ -35,44 +37,38 @@ export function DashboardPage() {
   const features = [
     {
       icon: Network,
-      title: "Academic Networking",
-      description:
-        "Connect with researchers, professors, and doctoral students across institutions",
+      title: t("dashboard.academicNetworking"),
+      description: t("dashboard.academicNetworkingDesc"),
       color: "from-blue-500 to-indigo-600",
     },
     {
       icon: FileText,
-      title: "Research Sharing",
-      description:
-        "Share your publications, research updates, and academic achievements with your network",
+      title: t("dashboard.researchSharing"),
+      description: t("dashboard.researchSharingDesc"),
       color: "from-green-500 to-emerald-600",
     },
     {
       icon: MessageSquare,
-      title: "Real-time Collaboration",
-      description:
-        "Direct messaging to discuss projects, exchange ideas, and foster collaboration",
+      title: t("dashboard.realtimeCollaboration"),
+      description: t("dashboard.realtimeCollaborationDesc"),
       color: "from-purple-500 to-violet-600",
     },
     {
       icon: FolderKanban,
-      title: "Project Management",
-      description:
-        "Organize and showcase your research projects with detailed descriptions and milestones",
+      title: t("dashboard.projectManagement"),
+      description: t("dashboard.projectManagementDesc"),
       color: "from-orange-500 to-red-600",
     },
     {
       icon: GraduationCap,
-      title: "Google Scholar Integration",
-      description:
-        "Sync your publications and track citations automatically from Google Scholar",
+      title: t("dashboard.googleScholarIntegration"),
+      description: t("dashboard.googleScholarIntegrationDesc"),
       color: "from-pink-500 to-rose-600",
     },
     {
       icon: UserCheck,
-      title: "Smart Profile Matching",
-      description:
-        "Find peers based on research interests, departments, and academic specializations",
+      title: t("dashboard.smartProfileMatching"),
+      description: t("dashboard.smartProfileMatchingDesc"),
       color: "from-teal-500 to-cyan-600",
     },
   ];
@@ -85,26 +81,26 @@ export function DashboardPage() {
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-indigo-700 shadow-sm">
                 <Sparkles className="h-4 w-4" />
-                Your academic community
+                {t("dashboard.yourAcademicCommunity")}
               </div>
               <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">
-                Welcome back, {user?.fullName}!
+                {t("common.welcome")}, {user?.fullName}!
               </h1>
               <p className="text-gray-600 text-lg">
                 {user?.profile_completed
-                  ? "Discover, connect, and collaborate with the academic community."
-                  : "Complete your profile to unlock your personalized experience."}
+                  ? t("dashboard.discoverConnect")
+                  : t("dashboard.completeProfileMessage")}
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
               <Button asChild size="lg">
                 <Link to="/feed">
-                  Explore Feed
+                  {t("dashboard.exploreFeed")}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
               <Button variant="outline" size="lg" asChild>
-                <Link to="/people">Find Researchers</Link>
+                <Link to="/people">{t("dashboard.researchers")}</Link>
               </Button>
             </div>
           </div>
@@ -117,11 +113,15 @@ export function DashboardPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-blue-700">Community</p>
+                  <p className="text-sm font-medium text-blue-700">
+                    {t("dashboard.community")}
+                  </p>
                   <p className="text-3xl font-bold text-blue-900 mt-1">
                     {stats.users.total}
                   </p>
-                  <p className="text-xs text-blue-600 mt-1">Active members</p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    {t("dashboard.activeMembers")}
+                  </p>
                 </div>
                 <Users className="h-12 w-12 text-blue-600" />
               </div>
@@ -133,12 +133,14 @@ export function DashboardPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-green-700">
-                    Universities
+                    {t("dashboard.universities")}
                   </p>
                   <p className="text-3xl font-bold text-green-900 mt-1">
                     {stats.organisation.universities}
                   </p>
-                  <p className="text-xs text-green-600 mt-1">Institutions</p>
+                  <p className="text-xs text-green-600 mt-1">
+                    {t("dashboard.institutions")}
+                  </p>
                 </div>
                 <Building2 className="h-12 w-12 text-green-600" />
               </div>
@@ -150,12 +152,14 @@ export function DashboardPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-purple-700">
-                    Research Labs
+                    {t("dashboard.researchLabs")}
                   </p>
                   <p className="text-3xl font-bold text-purple-900 mt-1">
                     {stats.organisation.laboratoires}
                   </p>
-                  <p className="text-xs text-purple-600 mt-1">Laboratories</p>
+                  <p className="text-xs text-purple-600 mt-1">
+                    {t("dashboard.laboratories")}
+                  </p>
                 </div>
                 <FlaskConical className="h-12 w-12 text-purple-600" />
               </div>
@@ -167,13 +171,13 @@ export function DashboardPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-orange-700">
-                    Knowledge
+                    {t("dashboard.knowledge")}
                   </p>
                   <p className="text-3xl font-bold text-orange-900 mt-1">
                     {stats.content.posts}
                   </p>
                   <p className="text-xs text-orange-600 mt-1">
-                    Shared insights
+                    {t("dashboard.sharedInsights")}
                   </p>
                 </div>
                 <FileText className="h-12 w-12 text-orange-600" />
@@ -186,12 +190,9 @@ export function DashboardPage() {
       <div className="space-y-4">
         <div className="text-center space-y-2">
           <h2 className="text-2xl font-bold text-gray-900">
-            Everything you need for academic collaboration
+            {t("dashboard.everythingYouNeed")}
           </h2>
-          <p className="text-gray-600">
-            A complete platform designed for researchers, professors, and
-            doctoral students
-          </p>
+          <p className="text-gray-600">{t("dashboard.completePlatform")}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -223,22 +224,21 @@ export function DashboardPage() {
           </div>
           <div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">
-              Ready to make an impact?
+              {t("dashboard.readyToMakeImpact")}
             </h3>
             <p className="text-gray-600 mb-4">
-              Join the conversation, share your research, and grow your academic
-              network today.
+              {t("dashboard.joinConversation")}
             </p>
           </div>
           <div className="flex flex-wrap justify-center gap-3">
             <Button asChild>
-              <Link to="/feed">View Feed</Link>
+              <Link to="/feed">{t("dashboard.viewFeed")}</Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link to="/connections">My Connections</Link>
+              <Link to="/connections">{t("dashboard.myConnections")}</Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link to="/projets">Manage Projects</Link>
+              <Link to="/projets">{t("dashboard.manageProjects")}</Link>
             </Button>
           </div>
         </CardContent>

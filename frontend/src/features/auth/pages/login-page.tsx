@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { authApi } from "@/api";
 import { useAuthStore } from "@/store/auth";
 import { Button } from "@/components/ui/button";
@@ -19,32 +20,35 @@ import {
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
-const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(1, "Password is required"),
-});
+const loginSchema = (t: (key: string) => string) =>
+  z.object({
+    email: z.string().email(t("auth.email")),
+    password: z.string().min(1, t("auth.password")),
+  });
 
 type LoginForm = z.infer<typeof loginSchema>;
 
-const otpSchema = z.object({
-  token: z.string().length(6, "OTP must be 6 digits"),
-});
+const otpSchema = (t: (key: string) => string) =>
+  z.object({
+    token: z.string().length(6, t("auth.authenticationCode")),
+  });
 
 type OTPForm = z.infer<typeof otpSchema>;
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { setUser } = useAuthStore();
   const [requires2FA, setRequires2FA] = useState(false);
   const [userEmail, setUserEmail] = useState("");
 
   const loginForm = useForm<LoginForm>({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(loginSchema(t)),
     defaultValues: { email: "", password: "" },
   });
 
   const otpForm = useForm<OTPForm>({
-    resolver: zodResolver(otpSchema),
+    resolver: zodResolver(otpSchema(t)),
     defaultValues: { token: "" },
   });
 
@@ -54,10 +58,10 @@ export function LoginPage() {
       if (data.requires_2fa) {
         setRequires2FA(true);
         setUserEmail(loginForm.getValues("email"));
-        toast.info("Please enter your 2FA code");
+        toast.info(t("auth.enter2FACode"));
       } else {
         setUser(data.user!);
-        toast.success("Login successful!");
+        toast.success(t("auth.loginSuccessful"));
 
         // Admin users go directly to admin dashboard
         if (data.user?.user_type === "admin") {
@@ -71,7 +75,7 @@ export function LoginPage() {
       }
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.detail || "Login failed");
+      toast.error(error.response?.data?.detail || t("auth.loginFailed"));
     },
   });
 
@@ -79,7 +83,7 @@ export function LoginPage() {
     mutationFn: authApi.verify2FA,
     onSuccess: (data) => {
       setUser(data.user);
-      toast.success("2FA verification successful!");
+      toast.success(t("auth.verificationSuccessful"));
 
       // Admin users go directly to admin dashboard
       if (data.user.user_type === "admin") {
@@ -92,7 +96,7 @@ export function LoginPage() {
       }
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.detail || "2FA verification failed");
+      toast.error(error.response?.data?.detail || t("auth.verificationFailed"));
     },
   });
 
@@ -110,10 +114,8 @@ export function LoginPage() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Two-Factor Authentication</CardTitle>
-          <CardDescription>
-            Enter the 6-digit code from your authenticator app
-          </CardDescription>
+          <CardTitle>{t("auth.twoFactorAuth")}</CardTitle>
+          <CardDescription>{t("auth.enterAuthCode")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form
@@ -121,7 +123,7 @@ export function LoginPage() {
             className="space-y-4"
           >
             <div className="space-y-2">
-              <Label htmlFor="token">Authentication Code</Label>
+              <Label htmlFor="token">{t("auth.authenticationCode")}</Label>
               <Input
                 id="token"
                 type="text"
@@ -144,7 +146,7 @@ export function LoginPage() {
               {verify2FAMutation.isPending && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Verify
+              {t("auth.verify")}
             </Button>
 
             <Button
@@ -153,7 +155,7 @@ export function LoginPage() {
               className="w-full"
               onClick={() => setRequires2FA(false)}
             >
-              Back to Login
+              {t("auth.backToLogin")}
             </Button>
           </form>
         </CardContent>
@@ -164,8 +166,8 @@ export function LoginPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Welcome Back</CardTitle>
-        <CardDescription>Sign in to your account to continue</CardDescription>
+        <CardTitle>{t("auth.welcomeBack")}</CardTitle>
+        <CardDescription>{t("auth.signInToContinue")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -173,7 +175,7 @@ export function LoginPage() {
           className="space-y-4"
         >
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("auth.email")}</Label>
             <Input
               id="email"
               type="email"
@@ -188,7 +190,7 @@ export function LoginPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t("auth.password")}</Label>
             <Input
               id="password"
               type="password"
@@ -210,16 +212,16 @@ export function LoginPage() {
             {loginMutation.isPending && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            Sign In
+            {t("auth.signIn")}
           </Button>
 
           <p className="text-center text-sm text-gray-600">
-            Don't have an account?{" "}
+            {t("auth.noAccount")}{" "}
             <Link
               to="/register"
               className="text-primary hover:underline font-medium"
             >
-              Sign up
+              {t("auth.signUpButton")}
             </Link>
           </p>
         </form>

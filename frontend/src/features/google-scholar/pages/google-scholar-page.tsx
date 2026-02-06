@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,7 @@ import { googleScholarApi } from "@/api/google-scholar";
 import { toast } from "sonner";
 
 export function GoogleScholarPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [googleScholarId, setGoogleScholarId] = useState("");
 
@@ -33,18 +35,18 @@ export function GoogleScholarPage() {
     mutationFn: googleScholarApi.link,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["google-scholar"] });
-      toast.success("Google Scholar linked");
+      toast.success(t("googleScholar.linked"));
     },
-    onError: () => toast.error("Failed to link Google Scholar"),
+    onError: () => toast.error(t("googleScholar.failedToLink")),
   });
 
   const updateMutation = useMutation({
     mutationFn: googleScholarApi.update,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["google-scholar"] });
-      toast.success("Google Scholar updated");
+      toast.success(t("googleScholar.updated"));
     },
-    onError: () => toast.error("Failed to update Google Scholar"),
+    onError: () => toast.error(t("googleScholar.failedToUpdate")),
   });
 
   const unlinkMutation = useMutation({
@@ -52,9 +54,9 @@ export function GoogleScholarPage() {
     onSuccess: () => {
       setGoogleScholarId("");
       queryClient.invalidateQueries({ queryKey: ["google-scholar"] });
-      toast.success("Google Scholar unlinked");
+      toast.success(t("googleScholar.unlinked"));
     },
-    onError: () => toast.error("Failed to unlink Google Scholar"),
+    onError: () => toast.error(t("googleScholar.failedToUnlink")),
   });
 
   const syncMutation = useMutation({
@@ -63,11 +65,11 @@ export function GoogleScholarPage() {
       queryClient.invalidateQueries({
         queryKey: ["google-scholar", "publications"],
       });
-      toast.success(data.message || "Publications synced");
+      toast.success(data.message || t("googleScholar.synced"));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to sync publications";
+        error.response?.data?.detail || t("googleScholar.failedToSync");
       toast.error(message);
     },
   });
@@ -93,12 +95,12 @@ export function GoogleScholarPage() {
         queryKey: ["posts", "feed"],
       });
     },
-    onError: () => toast.error("Failed to update publication"),
+    onError: () => toast.error(t("googleScholar.failedToUpdate2")),
   });
 
   const handleSave = () => {
     if (!googleScholarId.trim()) {
-      toast.error("Google Scholar ID is required");
+      toast.error(t("googleScholar.googleScholarId"));
       return;
     }
     if (integration) {
@@ -112,11 +114,13 @@ export function GoogleScholarPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Google Scholar Integration</CardTitle>
+          <CardTitle>{t("googleScholar.title")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="googleScholarId">Google Scholar ID</Label>
+            <Label htmlFor="googleScholarId">
+              {t("googleScholar.googleScholarId")}
+            </Label>
             <Input
               id="googleScholarId"
               placeholder="e.g., 3RA5IZkAAAAJ"
@@ -129,7 +133,9 @@ export function GoogleScholarPage() {
               onClick={handleSave}
               disabled={linkMutation.isPending || updateMutation.isPending}
             >
-              {integration ? "Update" : "Link"}
+              {integration
+                ? t("googleScholar.updateAccount")
+                : t("googleScholar.linkAccount")}
             </Button>
             {integration && (
               <Button
@@ -137,7 +143,9 @@ export function GoogleScholarPage() {
                 onClick={() => syncMutation.mutate()}
                 disabled={syncMutation.isPending}
               >
-                {syncMutation.isPending ? "Syncing..." : "Sync Publications"}
+                {syncMutation.isPending
+                  ? t("common.loading")
+                  : t("googleScholar.syncPublications")}
               </Button>
             )}
             {integration && (
@@ -146,7 +154,7 @@ export function GoogleScholarPage() {
                 onClick={() => unlinkMutation.mutate()}
                 disabled={unlinkMutation.isPending}
               >
-                Unlink
+                {t("googleScholar.unlinkAccount")}
               </Button>
             )}
           </div>
@@ -166,7 +174,7 @@ export function GoogleScholarPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Publications</CardTitle>
+          <CardTitle>{t("googleScholar.publications")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {!integration && (
@@ -176,12 +184,12 @@ export function GoogleScholarPage() {
           )}
           {publicationsQuery.isLoading && (
             <p className="text-sm text-muted-foreground">
-              Loading publications...
+              {t("common.loading")}
             </p>
           )}
           {publicationsQuery.data?.publications.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              No publications found.
+              {t("googleScholar.noPublications")}
             </p>
           )}
           {publicationsQuery.data?.publications.map((pub) => (
@@ -194,7 +202,7 @@ export function GoogleScholarPage() {
                 {pub.publicationDate
                   ? new Date(pub.publicationDate).toLocaleDateString()
                   : "Unknown date"}{" "}
-                · {pub.citationCount} citations
+                · {pub.citationCount} {t("googleScholar.citations")}
               </div>
               {pub.googleScholarUrl && (
                 <a
@@ -217,7 +225,9 @@ export function GoogleScholarPage() {
                     })
                   }
                 >
-                  {pub.isPosted ? "Unpost" : "Post"}
+                  {pub.isPosted
+                    ? t("googleScholar.removeFromFeed")
+                    : t("googleScholar.postToFeed")}
                 </Button>
               </div>
             </div>

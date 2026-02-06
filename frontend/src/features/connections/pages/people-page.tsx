@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
 import { transformUrl } from "@/lib/url-utils";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,7 @@ import type { UserDetailResponse } from "@/types";
 import { ProfileTabsContent } from "../components/profile-tabs-content";
 
 export function PeoplePage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedUser, setSelectedUser] = useState<UserDetailResponse | null>(
@@ -108,9 +110,9 @@ export function PeoplePage() {
     mutationFn: (userId: number) => connectionsApi.send({ receiverId: userId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["connections"] });
-      toast.success("Connection request sent");
+      toast.success(t("people.connectionRequestSent"));
     },
-    onError: () => toast.error("Failed to send request"),
+    onError: () => toast.error(t("errors.somethingWentWrong")),
   });
 
   const messageMutation = useMutation({
@@ -119,7 +121,7 @@ export function PeoplePage() {
       setIsProfileDialogOpen(false);
       navigate("/chats");
     },
-    onError: () => toast.error("Failed to open chat"),
+    onError: () => toast.error(t("errors.somethingWentWrong")),
   });
 
   const getInitials = (name: string) => {
@@ -137,7 +139,7 @@ export function PeoplePage() {
       setSelectedUser(profile);
       setIsProfileDialogOpen(true);
     } catch {
-      toast.error("Failed to load user profile");
+      toast.error(t("errors.somethingWentWrong"));
     }
   };
 
@@ -267,7 +269,7 @@ export function PeoplePage() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Find People
+              {t("people.findPeople")}
             </CardTitle>
             {hasActiveFilters && (
               <Button
@@ -277,7 +279,7 @@ export function PeoplePage() {
                 className="gap-2"
               >
                 <RotateCcw className="h-4 w-4" />
-                Reset Filters
+                {t("people.resetFilters")}
               </Button>
             )}
           </div>
@@ -287,14 +289,14 @@ export function PeoplePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* University Filter */}
             <div className="space-y-2">
-              <Label htmlFor="university">University</Label>
+              <Label htmlFor="university">{t("people.university")}</Label>
               <select
                 id="university"
                 className="w-full px-3 py-2 border rounded-md text-sm"
                 value={selectedUniversityId ?? ""}
                 onChange={(e) => handleUniversityChange(e.target.value)}
               >
-                <option value="">All Universities</option>
+                <option value="">{t("people.allUniversities")}</option>
                 {universities?.map((uni: any) => (
                   <option key={uni.id} value={uni.id}>
                     {uni.nom}
@@ -305,7 +307,7 @@ export function PeoplePage() {
 
             {/* Etablissement Filter */}
             <div className="space-y-2">
-              <Label htmlFor="etablissement">Etablissement</Label>
+              <Label htmlFor="etablissement">{t("people.etablissement")}</Label>
               <select
                 id="etablissement"
                 className="w-full px-3 py-2 border rounded-md text-sm"
@@ -313,7 +315,7 @@ export function PeoplePage() {
                 onChange={(e) => handleEtablissementChange(e.target.value)}
                 disabled={!selectedUniversityId}
               >
-                <option value="">All Etablissements</option>
+                <option value="">{t("people.allEtablissements")}</option>
                 {filteredEtablissements?.map((etab: any) => (
                   <option key={etab.id} value={etab.id}>
                     {etab.nom}
@@ -324,7 +326,7 @@ export function PeoplePage() {
 
             {/* Departement Filter */}
             <div className="space-y-2">
-              <Label htmlFor="departement">Departement</Label>
+              <Label htmlFor="departement">{t("people.departement")}</Label>
               <select
                 id="departement"
                 className="w-full px-3 py-2 border rounded-md text-sm"
@@ -332,7 +334,7 @@ export function PeoplePage() {
                 onChange={(e) => handleDepartementChange(e.target.value)}
                 disabled={!selectedEtablissementId}
               >
-                <option value="">All Departements</option>
+                <option value="">{t("people.allDepartements")}</option>
                 {filteredDepartements?.map((dept: any) => (
                   <option key={dept.id} value={dept.id}>
                     {dept.nom}
@@ -343,7 +345,7 @@ export function PeoplePage() {
 
             {/* Laboratoire Filter */}
             <div className="space-y-2">
-              <Label htmlFor="laboratoire">Laboratoire</Label>
+              <Label htmlFor="laboratoire">{t("people.laboratoire")}</Label>
               <select
                 id="laboratoire"
                 className="w-full px-3 py-2 border rounded-md text-sm"
@@ -351,7 +353,7 @@ export function PeoplePage() {
                 onChange={(e) => handleLaboratoireChange(e.target.value)}
                 disabled={!selectedUniversityId}
               >
-                <option value="">All Laboratoires</option>
+                <option value="">{t("people.allLaboratoires")}</option>
                 {filteredLaboratoires?.map((lab: any) => (
                   <option key={lab.id} value={lab.id}>
                     {lab.nom}
@@ -362,7 +364,7 @@ export function PeoplePage() {
 
             {/* Equipe Filter */}
             <div className="space-y-2">
-              <Label htmlFor="equipe">Equipe</Label>
+              <Label htmlFor="equipe">{t("people.equipe")}</Label>
               <select
                 id="equipe"
                 className="w-full px-3 py-2 border rounded-md text-sm"
@@ -370,7 +372,7 @@ export function PeoplePage() {
                 onChange={(e) => handleEquipeChange(e.target.value)}
                 disabled={!selectedUniversityId}
               >
-                <option value="">All Equipes</option>
+                <option value="">{t("people.allEquipes")}</option>
                 {filteredEquipes?.map((eq: any) => (
                   <option key={eq.id} value={eq.id}>
                     {eq.nom}
@@ -381,16 +383,16 @@ export function PeoplePage() {
 
             {/* User Type Filter */}
             <div className="space-y-2">
-              <Label htmlFor="userType">Role</Label>
+              <Label htmlFor="userType">{t("people.role")}</Label>
               <select
                 id="userType"
                 className="w-full px-3 py-2 border rounded-md text-sm"
                 value={filters.user_type ?? ""}
                 onChange={(e) => handleUserTypeChange(e.target.value)}
               >
-                <option value="">All Roles</option>
-                <option value="enseignant">Enseignant</option>
-                <option value="doctorant">Doctorant</option>
+                <option value="">{t("people.allRoles")}</option>
+                <option value="enseignant">{t("people.enseignant")}</option>
+                <option value="doctorant">{t("people.doctorant")}</option>
               </select>
             </div>
           </div>
@@ -398,8 +400,9 @@ export function PeoplePage() {
           {/* Results Info */}
           {hasActiveFilters && (
             <div className="text-sm text-muted-foreground pt-2 border-t">
-              Found {filteredUsersQuery.data?.total || 0} result
-              {(filteredUsersQuery.data?.total || 0) !== 1 ? "s" : ""}
+              {t("people.foundResults", {
+                count: filteredUsersQuery.data?.total || 0,
+              })}
             </div>
           )}
         </CardContent>
@@ -409,11 +412,13 @@ export function PeoplePage() {
       {hasActiveFilters && (
         <Card>
           <CardHeader>
-            <CardTitle>People</CardTitle>
+            <CardTitle>{t("people.people")}</CardTitle>
           </CardHeader>
           <CardContent>
             {filteredUsersQuery.isLoading ? (
-              <p className="text-sm text-muted-foreground">Loading...</p>
+              <p className="text-sm text-muted-foreground">
+                {t("common.loading")}
+              </p>
             ) : users.length > 0 ? (
               <ScrollArea className="h-[600px]">
                 <div className="space-y-3 pr-4">
@@ -458,13 +463,13 @@ export function PeoplePage() {
                               onClick={() => messageMutation.mutate(user.id)}
                             >
                               <MessageCircle className="h-4 w-4" />
-                              Message
+                              {t("people.message")}
                             </Button>
                           </>
                         ) : hasPendingRequest(user.id) ? (
                           <Button size="sm" variant="outline" disabled>
                             <UserCheck className="h-4 w-4 mr-2" />
-                            Pending
+                            {t("people.pending")}
                           </Button>
                         ) : (
                           <Button
@@ -473,7 +478,7 @@ export function PeoplePage() {
                             className="gap-2"
                           >
                             <UserPlus className="h-4 w-4" />
-                            Connect
+                            {t("people.connect")}
                           </Button>
                         )}
                       </div>
@@ -483,7 +488,7 @@ export function PeoplePage() {
               </ScrollArea>
             ) : (
               <p className="text-center text-sm text-muted-foreground py-8">
-                No people found with selected filters
+                {t("people.noPeopleFound")}
               </p>
             )}
           </CardContent>

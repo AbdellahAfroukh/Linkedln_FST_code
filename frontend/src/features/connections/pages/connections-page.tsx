@@ -30,8 +30,10 @@ import {
 import type { UserDetailResponse } from "@/types";
 import { ProfileTabsContent } from "../components/profile-tabs-content";
 import { useWebSocketConnections } from "@/hooks/use-websocket-hooks";
+import { useTranslation } from "react-i18next";
 
 export function ConnectionsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuthStore();
@@ -116,7 +118,7 @@ export function ConnectionsPage() {
     mutationFn: connectionsApi.send,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["connections"] });
-      toast.success("Connection request sent");
+      toast.success(t("connections.requestSent"));
     },
     onError: () => toast.error("Failed to send request"),
   });
@@ -125,7 +127,7 @@ export function ConnectionsPage() {
     mutationFn: connectionsApi.accept,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["connections"] });
-      toast.success("Connection accepted");
+      toast.success(t("connections.requestAccepted"));
     },
     onError: () => toast.error("Failed to accept request"),
   });
@@ -134,7 +136,7 @@ export function ConnectionsPage() {
     mutationFn: connectionsApi.reject,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["connections"] });
-      toast.success("Request cancelled");
+      toast.success(t("connections.requestRejected"));
     },
     onError: () => toast.error("Failed to cancel request"),
   });
@@ -143,7 +145,7 @@ export function ConnectionsPage() {
     mutationFn: connectionsApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["connections"] });
-      toast.success("Connection removed");
+      toast.success(t("connections.connectionRemoved"));
     },
     onError: () => toast.error("Failed to remove connection"),
   });
@@ -197,19 +199,21 @@ export function ConnectionsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Search className="h-5 w-5" />
-            Find People to Connect
+            {t("nav.people")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-2">
             <Input
-              placeholder="Search by name..."
+              placeholder={t("connections.searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           {searchUsersQuery.isLoading && (
-            <p className="text-sm text-muted-foreground">Searching...</p>
+            <p className="text-sm text-muted-foreground">
+              {t("common.loading")}
+            </p>
           )}
           {searchUsersQuery.data && searchUsersQuery.data.users.length > 0 && (
             <div className="space-y-3">
@@ -243,7 +247,7 @@ export function ConnectionsPage() {
                       {isConnected(user.id) ? (
                         <Button variant="outline" size="sm" disabled>
                           <UserCheck className="h-4 w-4 mr-2" />
-                          Connected
+                          {t("connections.accepted")}
                         </Button>
                       ) : hasPendingRequest(user.id) ? (
                         <Button
@@ -260,7 +264,7 @@ export function ConnectionsPage() {
                           disabled={rejectMutation.isPending}
                         >
                           <UserPlus className="h-4 w-4 mr-2" />
-                          Cancel Request
+                          {t("connections.cancelRequest")}
                         </Button>
                       ) : (
                         <Button
@@ -271,7 +275,7 @@ export function ConnectionsPage() {
                           disabled={sendMutation.isPending}
                         >
                           <UserPlus className="h-4 w-4 mr-2" />
-                          Connect
+                          {t("connections.sendRequest")}
                         </Button>
                       )}
                     </div>
@@ -291,7 +295,7 @@ export function ConnectionsPage() {
       {/* Pending Incoming Requests */}
       <Card>
         <CardHeader>
-          <CardTitle>Connection Requests</CardTitle>
+          <CardTitle>{t("connections.incoming")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {incomingQuery.isLoading && (
@@ -299,7 +303,7 @@ export function ConnectionsPage() {
           )}
           {incomingQuery.data?.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-4">
-              No pending requests
+              {t("connections.noPendingRequests")}
             </p>
           )}
           {incomingQuery.data?.map((conn) => {
@@ -337,7 +341,7 @@ export function ConnectionsPage() {
                     disabled={acceptMutation.isPending}
                   >
                     <UserCheck className="h-4 w-4 mr-2" />
-                    Accept
+                    {t("connections.acceptRequest")}
                   </Button>
                   <Button
                     variant="outline"
@@ -346,7 +350,7 @@ export function ConnectionsPage() {
                     disabled={rejectMutation.isPending}
                   >
                     <UserX className="h-4 w-4 mr-2" />
-                    Decline
+                    {t("connections.rejectRequest")}
                   </Button>
                 </div>
               </div>
@@ -359,7 +363,7 @@ export function ConnectionsPage() {
       <Card>
         <CardHeader>
           <CardTitle>
-            My Connections ({acceptedQuery.data?.length || 0})
+            {t("connections.accepted")} ({acceptedQuery.data?.length || 0})
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -368,7 +372,7 @@ export function ConnectionsPage() {
           )}
           {acceptedQuery.data?.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-4">
-              No connections yet. Start connecting with people!
+              {t("connections.noConnections")}
             </p>
           )}
           {acceptedQuery.data?.map((conn) => {

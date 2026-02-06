@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import {
   Card,
   CardContent,
@@ -62,6 +63,7 @@ import type {
 } from "@/types";
 
 export function CVPage() {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<
@@ -88,21 +90,24 @@ export function CVPage() {
       setCVTitle("");
       setCVDescription("");
       setIsCreatingCV(false);
-      toast.success("CV created successfully");
+      toast.success(t("cv.cvCreated"));
     },
-    onError: () => toast.error("Failed to create CV"),
+    onError: () => toast.error(t("cv.failedToCreateCV")),
   });
 
   // Update CV Mutation
   const updateCVMutation = useMutation({
-    mutationFn: (data: { titre?: string; description?: string }) =>
-      cvApi.update(data),
+    mutationFn: (data: {
+      description?: string;
+      isPublic?: boolean;
+      isEnabled?: boolean;
+    }) => cvApi.update(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cv"] });
       setIsEditingCV(false);
-      toast.success("CV updated successfully");
+      toast.success(t("cv.cvUpdated"));
     },
-    onError: () => toast.error("Failed to update CV"),
+    onError: () => toast.error(t("cv.failedToUpdateCV")),
   });
 
   // Delete CV Mutation
@@ -111,9 +116,9 @@ export function CVPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cv"] });
       setShowDeleteCV(false);
-      toast.success("CV deleted successfully");
+      toast.success(t("cv.cvDeleted"));
     },
-    onError: () => toast.error("Failed to delete CV"),
+    onError: () => toast.error(t("cv.failedToDeleteCV")),
   });
 
   // Toggle CV Public Status Mutation
@@ -121,9 +126,9 @@ export function CVPage() {
     mutationFn: (isPublic: boolean) => cvApi.setPublic(isPublic),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cv"] });
-      toast.success("CV visibility updated");
+      toast.success(t("cv.cvUpdated"));
     },
-    onError: () => toast.error("Failed to update CV visibility"),
+    onError: () => toast.error(t("cv.failedToUpdateCVVisibility")),
   });
 
   // Toggle CV Enabled Status Mutation
@@ -132,25 +137,25 @@ export function CVPage() {
       enabled ? cvApi.enable() : cvApi.disable(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cv"] });
-      toast.success("CV status updated");
+      toast.success(t("cv.cvUpdated"));
     },
-    onError: () => toast.error("Failed to update CV status"),
+    onError: () => toast.error(t("cv.failedToUpdateCVStatus")),
   });
 
   const handleCreateCV = () => {
-    if (!cvTitle.trim()) {
-      toast.error("CV title is required");
+    if (!cvDescription.trim()) {
+      toast.error(t("cv.cvTitleRequired"));
       return;
     }
     createCVMutation.mutate({
-      titre: cvTitle.trim(),
-      description: cvDescription.trim() || undefined,
+      description: cvDescription.trim(),
+      isPublic: false,
+      isEnabled: true,
     });
   };
 
   const handleUpdateCV = () => {
     updateCVMutation.mutate({
-      titre: cvTitle.trim() || cv?.titre,
       description: cvDescription.trim() || cv?.description,
     });
   };
@@ -163,13 +168,13 @@ export function CVPage() {
 
   const handleToggleEnabled = () => {
     if (cv) {
-      toggleEnabledMutation.mutate(!cv.cv_enabled);
+      toggleEnabledMutation.mutate(!cv.isEnabled);
     }
   };
 
   const handleDownloadPDF = async () => {
     try {
-      toast.info("Generating PDF...");
+      toast.info(t("cv.generatingPDF"));
       const blob = await cvApi.downloadPDF();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -179,9 +184,9 @@ export function CVPage() {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      toast.success("CV downloaded successfully");
+      toast.success(t("cv.cvUpdated"));
     } catch (error) {
-      toast.error("Failed to download CV");
+      toast.error(t("cv.failedToDownloadCV"));
     }
   };
 
@@ -194,12 +199,12 @@ export function CVPage() {
         <Card className="border-yellow-200 bg-yellow-50">
           <CardHeader>
             <CardTitle className="text-yellow-900">
-              CV Feature Not Available
+              {t("cv.cvFeatureNotAvailable")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-yellow-800">
-              The CV builder is only available for enseignants and doctorants.
+              {t("cv.cvOnlyForEnseignantsAndDoctorants")}
             </p>
           </CardContent>
         </Card>
@@ -212,7 +217,7 @@ export function CVPage() {
       <div className="max-w-4xl mx-auto">
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">Loading CV...</p>
+            <p className="text-muted-foreground">{t("cv.loadingCV")}</p>
           </CardContent>
         </Card>
       </div>
@@ -226,35 +231,37 @@ export function CVPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <GraduationCap className="h-6 w-6" />
-              My CV
+              {t("cv.myCV")}
             </CardTitle>
-            <CardDescription>Create your professional CV</CardDescription>
+            <CardDescription>
+              {t("cv.createYourProfessionalCV")}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="text-center space-y-4 py-12">
               <GraduationCap className="h-16 w-16 mx-auto text-muted-foreground" />
-              <p className="text-muted-foreground">
-                You don't have a CV yet. Create one to get started.
-              </p>
+              <p className="text-muted-foreground">{t("cv.noCVYet")}</p>
             </div>
 
             {isCreatingCV ? (
               <div className="space-y-4 border-t pt-4">
                 <div>
-                  <Label htmlFor="cv-title">CV Title *</Label>
+                  <Label htmlFor="cv-title">{t("cv.cvTitle")} *</Label>
                   <Input
                     id="cv-title"
-                    placeholder="e.g., Academic CV 2024"
+                    placeholder={t("cv.cvTitlePlaceholder")}
                     value={cvTitle}
                     onChange={(e) => setCVTitle(e.target.value)}
                     className="mt-2"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="cv-description">Description (Optional)</Label>
+                  <Label htmlFor="cv-description">
+                    {t("cv.descriptionOptional")}
+                  </Label>
                   <Input
                     id="cv-description"
-                    placeholder="e.g., My professional CV for academic positions"
+                    placeholder={t("cv.descriptionPlaceholder")}
                     value={cvDescription}
                     onChange={(e) => setCVDescription(e.target.value)}
                     className="mt-2"
@@ -265,13 +272,13 @@ export function CVPage() {
                     onClick={handleCreateCV}
                     disabled={createCVMutation.isPending}
                   >
-                    Create CV
+                    {t("cv.createCV")}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => setIsCreatingCV(false)}
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </Button>
                 </div>
               </div>
@@ -282,7 +289,7 @@ export function CVPage() {
                 className="w-full"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Create My First CV
+                {t("cv.createMyFirstCV")}
               </Button>
             )}
           </CardContent>
@@ -298,7 +305,7 @@ export function CVPage() {
         <CardHeader>
           <div className="flex justify-between items-start">
             <div className="flex-1">
-              <CardTitle className="text-3xl">{cv.titre}</CardTitle>
+              <CardTitle className="text-3xl">{t("cv.myCV")}</CardTitle>
               {cv.description && (
                 <CardDescription className="text-base mt-2">
                   {cv.description}
@@ -308,7 +315,7 @@ export function CVPage() {
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
                 <Download className="h-4 w-4 mr-1" />
-                Download PDF
+                {t("cv.downloadPDF")}
               </Button>
               <Button
                 variant="outline"
@@ -319,12 +326,12 @@ export function CVPage() {
                 {cv.isPublic ? (
                   <>
                     <Eye className="h-4 w-4 mr-1" />
-                    Public
+                    {t("cv.public")}
                   </>
                 ) : (
                   <>
                     <EyeOff className="h-4 w-4 mr-1" />
-                    Private
+                    {t("cv.private")}
                   </>
                 )}
               </Button>
@@ -333,17 +340,17 @@ export function CVPage() {
                 size="sm"
                 onClick={handleToggleEnabled}
                 disabled={toggleEnabledMutation.isPending}
-                className={cv.cv_enabled ? "" : "border-red-300 text-red-700"}
+                className={cv.isEnabled ? "" : "border-red-300 text-red-700"}
               >
-                {cv.cv_enabled ? (
+                {cv.isEnabled ? (
                   <>
                     <Power className="h-4 w-4 mr-1" />
-                    Enabled
+                    {t("cv.enabled")}
                   </>
                 ) : (
                   <>
                     <PowerOff className="h-4 w-4 mr-1" />
-                    Disabled
+                    {t("cv.disabled")}
                   </>
                 )}
               </Button>
@@ -351,25 +358,18 @@ export function CVPage() {
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm">
                     <Edit2 className="h-4 w-4 mr-1" />
-                    Edit
+                    {t("common.edit")}
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Edit CV</DialogTitle>
+                    <DialogTitle>{t("cv.editCV")}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="edit-title">CV Title</Label>
-                      <Input
-                        id="edit-title"
-                        value={cvTitle || cv.titre}
-                        onChange={(e) => setCVTitle(e.target.value)}
-                        className="mt-2"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="edit-description">Description</Label>
+                      <Label htmlFor="edit-description">
+                        {t("cv.description")}
+                      </Label>
                       <Input
                         id="edit-description"
                         value={cvDescription || cv.description || ""}
@@ -382,13 +382,13 @@ export function CVPage() {
                         onClick={handleUpdateCV}
                         disabled={updateCVMutation.isPending}
                       >
-                        Save Changes
+                        {t("cv.saveChanges")}
                       </Button>
                       <Button
                         variant="outline"
                         onClick={() => setIsEditingCV(false)}
                       >
-                        Cancel
+                        {t("common.cancel")}
                       </Button>
                     </div>
                   </div>
@@ -401,24 +401,23 @@ export function CVPage() {
                   onClick={() => setShowDeleteCV(true)}
                 >
                   <Trash2 className="h-4 w-4 mr-1" />
-                  Delete
+                  {t("common.delete")}
                 </Button>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete CV</AlertDialogTitle>
+                    <AlertDialogTitle>{t("cv.deleteCV")}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Are you sure you want to delete this CV? This action
-                      cannot be undone and will remove all associated content.
+                      {t("cv.deleteCVConfirmation")}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <div className="flex gap-2 justify-end">
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={() => deleteCVMutation.mutate()}
                       disabled={deleteCVMutation.isPending}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
-                      Delete CV
+                      {t("cv.deleteCV")}
                     </AlertDialogAction>
                   </div>
                 </AlertDialogContent>
@@ -431,11 +430,11 @@ export function CVPage() {
       {/* Tabs Navigation */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         {[
-          { id: "contact", label: "Contact", icon: Mail },
-          { id: "formations", label: "Education", icon: Book },
-          { id: "experiences", label: "Experience", icon: Briefcase },
-          { id: "competences", label: "Skills", icon: Award },
-          { id: "langues", label: "Languages", icon: Globe },
+          { id: "contact", label: t("cv.contact"), icon: Mail },
+          { id: "formations", label: t("cv.education"), icon: Book },
+          { id: "experiences", label: t("cv.experience"), icon: Briefcase },
+          { id: "competences", label: t("cv.skills"), icon: Award },
+          { id: "langues", label: t("cv.languages"), icon: Globe },
         ].map(({ id, label, icon: Icon }) => (
           <Button
             key={id}
@@ -451,24 +450,27 @@ export function CVPage() {
       </div>
 
       {/* Content Sections */}
-      {activeTab === "contact" && <ContactSection cv={cv} />}
-      {activeTab === "formations" && <FormationsSection cv={cv} />}
-      {activeTab === "experiences" && <ExperiencesSection cv={cv} />}
-      {activeTab === "competences" && <CompetencesSection cv={cv} />}
-      {activeTab === "langues" && <LanguesSection cv={cv} />}
+      {activeTab === "contact" && <ContactSection />}
+      {activeTab === "formations" && <FormationsSection />}
+      {activeTab === "experiences" && <ExperiencesSection />}
+      {activeTab === "competences" && <CompetencesSection />}
+      {activeTab === "langues" && <LanguesSection />}
     </div>
   );
 }
 
 // ==================== CONTACT SECTION ====================
-function ContactSection({ cv }: { cv: any }) {
+function ContactSection() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
-    email: "",
     telephone: "",
-    adresse: "",
+    adressePostale: "",
+    siteWeb: "",
+    LinkedIn: "",
+    GitHub: "",
   });
 
   const { data: contacts = [] } = useQuery({
@@ -483,11 +485,17 @@ function ContactSection({ cv }: { cv: any }) {
     mutationFn: (data: ContactCreate) => cvApi.addContact(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cv-contacts"] });
-      setFormData({ email: "", telephone: "", adresse: "" });
+      setFormData({
+        telephone: "",
+        adressePostale: "",
+        siteWeb: "",
+        LinkedIn: "",
+        GitHub: "",
+      });
       setShowForm(false);
-      toast.success("Contact added");
+      toast.success(t("cv.itemAdded"));
     },
-    onError: () => toast.error("Failed to add contact"),
+    onError: () => toast.error(t("cv.failedToAddContact")),
   });
 
   const updateContactMutation = useMutation({
@@ -495,26 +503,38 @@ function ContactSection({ cv }: { cv: any }) {
       cvApi.updateContact(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cv-contacts"] });
-      setFormData({ email: "", telephone: "", adresse: "" });
+      setFormData({
+        telephone: "",
+        adressePostale: "",
+        siteWeb: "",
+        LinkedIn: "",
+        GitHub: "",
+      });
       setEditingId(null);
       setShowForm(false);
-      toast.success("Contact updated");
+      toast.success(t("cv.itemUpdated"));
     },
-    onError: () => toast.error("Failed to update contact"),
+    onError: () => toast.error(t("cv.failedToUpdateContact")),
   });
 
   const deleteContactMutation = useMutation({
     mutationFn: (id: number) => cvApi.deleteContact(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cv-contacts"] });
-      toast.success("Contact deleted");
+      toast.success(t("cv.itemDeleted"));
     },
-    onError: () => toast.error("Failed to delete contact"),
+    onError: () => toast.error(t("cv.failedToDeleteContact")),
   });
 
   const handleAddContact = () => {
-    if (!formData.email) {
-      toast.error("Email is required");
+    if (
+      !formData.telephone &&
+      !formData.adressePostale &&
+      !formData.siteWeb &&
+      !formData.LinkedIn &&
+      !formData.GitHub
+    ) {
+      toast.error(t("cv.emailIsRequired"));
       return;
     }
     if (editingId) {
@@ -535,12 +555,12 @@ function ContactSection({ cv }: { cv: any }) {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
           <Mail className="h-5 w-5" />
-          Contact Information
+          {t("cv.contactInformation")}
         </CardTitle>
         {!showForm && (
           <Button size="sm" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-1" />
-            Add
+            {t("cv.add")}
           </Button>
         )}
       </CardHeader>
@@ -548,25 +568,38 @@ function ContactSection({ cv }: { cv: any }) {
         {showForm && (
           <div className="border-l-4 border-blue-500 pl-4 space-y-3 bg-blue-50 p-4 rounded">
             <Input
-              placeholder="Email *"
-              type="email"
-              value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
-            />
-            <Input
-              placeholder="Phone"
+              placeholder={t("cv.phone")}
               value={formData.telephone}
               onChange={(e) =>
                 setFormData({ ...formData, telephone: e.target.value })
               }
             />
             <Input
-              placeholder="Address"
-              value={formData.adresse}
+              placeholder={t("cv.address")}
+              value={formData.adressePostale}
               onChange={(e) =>
-                setFormData({ ...formData, adresse: e.target.value })
+                setFormData({ ...formData, adressePostale: e.target.value })
+              }
+            />
+            <Input
+              placeholder="Website"
+              value={formData.siteWeb}
+              onChange={(e) =>
+                setFormData({ ...formData, siteWeb: e.target.value })
+              }
+            />
+            <Input
+              placeholder="LinkedIn"
+              value={formData.LinkedIn}
+              onChange={(e) =>
+                setFormData({ ...formData, LinkedIn: e.target.value })
+              }
+            />
+            <Input
+              placeholder="GitHub"
+              value={formData.GitHub}
+              onChange={(e) =>
+                setFormData({ ...formData, GitHub: e.target.value })
               }
             />
             <div className="flex gap-2">
@@ -578,18 +611,24 @@ function ContactSection({ cv }: { cv: any }) {
                 }
                 size="sm"
               >
-                {editingId ? "Update" : "Save"}
+                {editingId ? t("common.update") : t("common.save")}
               </Button>
               <Button
                 variant="outline"
                 onClick={() => {
                   setShowForm(false);
                   setEditingId(null);
-                  setFormData({ email: "", telephone: "", adresse: "" });
+                  setFormData({
+                    telephone: "",
+                    adressePostale: "",
+                    siteWeb: "",
+                    LinkedIn: "",
+                    GitHub: "",
+                  });
                 }}
                 size="sm"
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
             </div>
           </div>
@@ -603,15 +642,29 @@ function ContactSection({ cv }: { cv: any }) {
                 className="border rounded-lg p-4 hover:bg-gray-50 transition flex justify-between items-start"
               >
                 <div className="flex-1">
-                  <p className="font-medium">{contact.email}</p>
                   {contact.telephone && (
                     <p className="text-sm text-muted-foreground">
-                      {contact.telephone}
+                      {t("cv.phone")}: {contact.telephone}
                     </p>
                   )}
-                  {contact.adresse && (
+                  {contact.adressePostale && (
                     <p className="text-sm text-muted-foreground">
-                      {contact.adresse}
+                      {t("cv.address")}: {contact.adressePostale}
+                    </p>
+                  )}
+                  {contact.siteWeb && (
+                    <p className="text-sm text-muted-foreground">
+                      Website: {contact.siteWeb}
+                    </p>
+                  )}
+                  {contact.LinkedIn && (
+                    <p className="text-sm text-muted-foreground">
+                      LinkedIn: {contact.LinkedIn}
+                    </p>
+                  )}
+                  {contact.GitHub && (
+                    <p className="text-sm text-muted-foreground">
+                      GitHub: {contact.GitHub}
                     </p>
                   )}
                 </div>
@@ -637,7 +690,7 @@ function ContactSection({ cv }: { cv: any }) {
           </div>
         ) : (
           <p className="text-center text-muted-foreground py-8">
-            No contact information yet
+            {t("cv.noContactInfoYet")}
           </p>
         )}
       </CardContent>
@@ -646,16 +699,18 @@ function ContactSection({ cv }: { cv: any }) {
 }
 
 // ==================== FORMATIONS SECTION ====================
-function FormationsSection({ cv }: { cv: any }) {
+function FormationsSection() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<FormationCreate>({
-    diplome: "",
+  const [formData, setFormData] = useState({
+    titre: "",
     etablissement: "",
-    dateDebut: "",
-    dateFin: "",
-    enCours: false,
+    anneeDebut: "" as any,
+    anneeFin: "" as any,
+    description: "",
+    isHigherEducation: true,
   });
 
   const { data: formations = [] } = useQuery({
@@ -671,16 +726,17 @@ function FormationsSection({ cv }: { cv: any }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cv-formations"] });
       setFormData({
-        diplome: "",
+        titre: "",
         etablissement: "",
-        dateDebut: "",
-        dateFin: "",
-        enCours: false,
+        anneeDebut: "" as any,
+        anneeFin: "" as any,
+        description: "",
+        isHigherEducation: true,
       });
       setShowForm(false);
-      toast.success("Formation added");
+      toast.success(t("cv.itemAdded"));
     },
-    onError: () => toast.error("Failed to add formation"),
+    onError: () => toast.error(t("cv.failedToAddFormation")),
   });
 
   const updateFormationMutation = useMutation({
@@ -694,36 +750,43 @@ function FormationsSection({ cv }: { cv: any }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cv-formations"] });
       setFormData({
-        diplome: "",
+        titre: "",
         etablissement: "",
-        dateDebut: "",
-        dateFin: "",
-        enCours: false,
+        anneeDebut: "" as any,
+        anneeFin: "" as any,
+        description: "",
+        isHigherEducation: true,
       });
       setEditingId(null);
       setShowForm(false);
-      toast.success("Formation updated");
+      toast.success(t("cv.itemUpdated"));
     },
-    onError: () => toast.error("Failed to update formation"),
+    onError: () => toast.error(t("cv.failedToUpdateFormation")),
   });
 
   const deleteFormationMutation = useMutation({
     mutationFn: (id: number) => cvApi.deleteFormation(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cv-formations"] });
-      toast.success("Formation deleted");
+      toast.success(t("cv.itemDeleted"));
     },
-    onError: () => toast.error("Failed to delete formation"),
+    onError: () => toast.error(t("cv.failedToDeleteFormation")),
   });
 
   const handleAddFormation = () => {
-    if (!formData.diplome || !formData.dateDebut) {
-      toast.error("Diploma and start date are required");
+    if (!formData.titre || !formData.anneeDebut) {
+      toast.error(t("cv.diplomaAndStartDateRequired"));
       return;
     }
-    const data = {
-      ...formData,
-      dateFin: formData.enCours ? undefined : formData.dateFin || undefined,
+    const data: FormationCreate = {
+      titre: formData.titre,
+      etablissement: formData.etablissement,
+      anneeDebut: parseInt(formData.anneeDebut as any) || 0,
+      anneeFin: formData.anneeFin
+        ? parseInt(formData.anneeFin as any)
+        : undefined,
+      description: formData.description,
+      isHigherEducation: formData.isHigherEducation,
     };
     if (editingId) {
       updateFormationMutation.mutate({ id: editingId, data });
@@ -743,12 +806,12 @@ function FormationsSection({ cv }: { cv: any }) {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
           <Book className="h-5 w-5" />
-          Education
+          {t("cv.education")}
         </CardTitle>
         {!showForm && (
           <Button size="sm" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-1" />
-            Add
+            {t("cv.add")}
           </Button>
         )}
       </CardHeader>
@@ -756,43 +819,56 @@ function FormationsSection({ cv }: { cv: any }) {
         {showForm && (
           <div className="border-l-4 border-green-500 pl-4 space-y-3 bg-green-50 p-4 rounded">
             <Input
-              placeholder="Degree *"
-              value={formData.diplome}
+              placeholder={t("cv.degreeRequired")}
+              value={formData.titre}
               onChange={(e) =>
-                setFormData({ ...formData, diplome: e.target.value })
+                setFormData({ ...formData, titre: e.target.value })
               }
             />
             <Input
-              placeholder="Institution"
+              placeholder={t("cv.institution")}
               value={formData.etablissement}
               onChange={(e) =>
                 setFormData({ ...formData, etablissement: e.target.value })
               }
             />
             <Input
-              type="date"
-              value={formData.dateDebut}
+              placeholder="Start Year"
+              type="number"
+              value={formData.anneeDebut}
               onChange={(e) =>
-                setFormData({ ...formData, dateDebut: e.target.value })
+                setFormData({ ...formData, anneeDebut: e.target.value as any })
               }
             />
             <Input
-              type="date"
-              value={formData.dateFin}
+              placeholder="End Year"
+              type="number"
+              value={formData.anneeFin}
               onChange={(e) =>
-                setFormData({ ...formData, dateFin: e.target.value })
+                setFormData({ ...formData, anneeFin: e.target.value as any })
               }
-              disabled={formData.enCours}
+            />
+            <textarea
+              className="w-full border rounded p-2 text-sm"
+              placeholder={t("cv.description")}
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              rows={3}
             />
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
-                checked={formData.enCours}
+                checked={formData.isHigherEducation}
                 onChange={(e) =>
-                  setFormData({ ...formData, enCours: e.target.checked })
+                  setFormData({
+                    ...formData,
+                    isHigherEducation: e.target.checked,
+                  })
                 }
               />
-              <span>Currently studying</span>
+              <span>Higher Education</span>
             </label>
             <div className="flex gap-2">
               <Button
@@ -811,16 +887,17 @@ function FormationsSection({ cv }: { cv: any }) {
                   setShowForm(false);
                   setEditingId(null);
                   setFormData({
-                    diplome: "",
+                    titre: "",
                     etablissement: "",
-                    dateDebut: "",
-                    dateFin: "",
-                    enCours: false,
+                    anneeDebut: "" as any,
+                    anneeFin: "" as any,
+                    description: "",
+                    isHigherEducation: true,
                   });
                 }}
                 size="sm"
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
             </div>
           </div>
@@ -834,17 +911,18 @@ function FormationsSection({ cv }: { cv: any }) {
                 className="border-l-4 border-green-500 rounded-lg p-4 bg-green-50 flex justify-between items-start"
               >
                 <div className="flex-1">
-                  <p className="font-semibold text-lg">{formation.diplome}</p>
+                  <p className="font-semibold text-lg">{formation.titre}</p>
                   {formation.etablissement && (
                     <p className="text-sm text-muted-foreground">
                       {formation.etablissement}
                     </p>
                   )}
+                  {formation.description && (
+                    <p className="text-sm mt-1">{formation.description}</p>
+                  )}
                   <p className="text-xs text-muted-foreground mt-1">
-                    {new Date(formation.dateDebut).toLocaleDateString()} -{" "}
-                    {formation.dateFin
-                      ? new Date(formation.dateFin).toLocaleDateString()
-                      : "Present"}
+                    {formation.anneeDebut} -{" "}
+                    {formation.anneeFin || t("cv.present")}
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -869,7 +947,7 @@ function FormationsSection({ cv }: { cv: any }) {
           </div>
         ) : (
           <p className="text-center text-muted-foreground py-8">
-            No education added yet
+            {t("cv.noEducationAdded")}
           </p>
         )}
       </CardContent>
@@ -878,17 +956,17 @@ function FormationsSection({ cv }: { cv: any }) {
 }
 
 // ==================== EXPERIENCES SECTION ====================
-function ExperiencesSection({ cv }: { cv: any }) {
+function ExperiencesSection() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<ExperienceCreate>({
-    poste: "",
+    titre: "",
     entreprise: "",
     description: "",
     dateDebut: "",
     dateFin: "",
-    enCours: false,
   });
 
   const { data: experiences = [] } = useQuery({
@@ -904,17 +982,16 @@ function ExperiencesSection({ cv }: { cv: any }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cv-experiences"] });
       setFormData({
-        poste: "",
+        titre: "",
         entreprise: "",
         description: "",
         dateDebut: "",
         dateFin: "",
-        enCours: false,
       });
       setShowForm(false);
-      toast.success("Experience added");
+      toast.success(t("cv.itemAdded"));
     },
-    onError: () => toast.error("Failed to add experience"),
+    onError: () => toast.error(t("cv.failedToAddExperience")),
   });
 
   const updateExperienceMutation = useMutation({
@@ -928,42 +1005,37 @@ function ExperiencesSection({ cv }: { cv: any }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cv-experiences"] });
       setFormData({
-        poste: "",
+        titre: "",
         entreprise: "",
         description: "",
         dateDebut: "",
         dateFin: "",
-        enCours: false,
       });
       setEditingId(null);
       setShowForm(false);
-      toast.success("Experience updated");
+      toast.success(t("cv.itemUpdated"));
     },
-    onError: () => toast.error("Failed to update experience"),
+    onError: () => toast.error(t("cv.failedToUpdateExperience")),
   });
 
   const deleteExperienceMutation = useMutation({
     mutationFn: (id: number) => cvApi.deleteExperience(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cv-experiences"] });
-      toast.success("Experience deleted");
+      toast.success(t("cv.itemDeleted"));
     },
-    onError: () => toast.error("Failed to delete experience"),
+    onError: () => toast.error(t("cv.failedToDeleteExperience")),
   });
 
   const handleAddExperience = () => {
-    if (!formData.poste || !formData.dateDebut) {
-      toast.error("Position and start date are required");
+    if (!formData.titre || !formData.dateDebut) {
+      toast.error(t("cv.positionAndStartDateRequired"));
       return;
     }
-    const data = {
-      ...formData,
-      dateFin: formData.enCours ? undefined : formData.dateFin || undefined,
-    };
     if (editingId) {
-      updateExperienceMutation.mutate({ id: editingId, data });
+      updateExperienceMutation.mutate({ id: editingId, data: formData });
     } else {
-      addExperienceMutation.mutate(data);
+      addExperienceMutation.mutate(formData);
     }
   };
 
@@ -978,12 +1050,12 @@ function ExperiencesSection({ cv }: { cv: any }) {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
           <Briefcase className="h-5 w-5" />
-          Experience
+          {t("cv.experience")}
         </CardTitle>
         {!showForm && (
           <Button size="sm" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-1" />
-            Add
+            {t("cv.add")}
           </Button>
         )}
       </CardHeader>
@@ -991,14 +1063,14 @@ function ExperiencesSection({ cv }: { cv: any }) {
         {showForm && (
           <div className="border-l-4 border-orange-500 pl-4 space-y-3 bg-orange-50 p-4 rounded">
             <Input
-              placeholder="Position *"
-              value={formData.poste}
+              placeholder={t("cv.positionRequired")}
+              value={formData.titre}
               onChange={(e) =>
-                setFormData({ ...formData, poste: e.target.value })
+                setFormData({ ...formData, titre: e.target.value })
               }
             />
             <Input
-              placeholder="Company"
+              placeholder={t("cv.company")}
               value={formData.entreprise}
               onChange={(e) =>
                 setFormData({ ...formData, entreprise: e.target.value })
@@ -1006,7 +1078,7 @@ function ExperiencesSection({ cv }: { cv: any }) {
             />
             <textarea
               className="w-full border rounded p-2 text-sm"
-              placeholder="Description"
+              placeholder={t("cv.description")}
               value={formData.description}
               onChange={(e) =>
                 setFormData({ ...formData, description: e.target.value })
@@ -1015,6 +1087,7 @@ function ExperiencesSection({ cv }: { cv: any }) {
             />
             <Input
               type="date"
+              placeholder="Start Date"
               value={formData.dateDebut}
               onChange={(e) =>
                 setFormData({ ...formData, dateDebut: e.target.value })
@@ -1022,22 +1095,12 @@ function ExperiencesSection({ cv }: { cv: any }) {
             />
             <Input
               type="date"
+              placeholder="End Date (optional)"
               value={formData.dateFin}
               onChange={(e) =>
                 setFormData({ ...formData, dateFin: e.target.value })
               }
-              disabled={formData.enCours}
             />
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={formData.enCours}
-                onChange={(e) =>
-                  setFormData({ ...formData, enCours: e.target.checked })
-                }
-              />
-              <span>Currently working here</span>
-            </label>
             <div className="flex gap-2">
               <Button
                 onClick={handleAddExperience}
@@ -1047,7 +1110,7 @@ function ExperiencesSection({ cv }: { cv: any }) {
                 }
                 size="sm"
               >
-                {editingId ? "Update" : "Save"}
+                {editingId ? t("common.update") : t("common.save")}
               </Button>
               <Button
                 variant="outline"
@@ -1055,17 +1118,16 @@ function ExperiencesSection({ cv }: { cv: any }) {
                   setShowForm(false);
                   setEditingId(null);
                   setFormData({
-                    poste: "",
+                    titre: "",
                     entreprise: "",
                     description: "",
                     dateDebut: "",
                     dateFin: "",
-                    enCours: false,
                   });
                 }}
                 size="sm"
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
             </div>
           </div>
@@ -1079,7 +1141,7 @@ function ExperiencesSection({ cv }: { cv: any }) {
                 className="border-l-4 border-orange-500 rounded-lg p-4 bg-orange-50 flex justify-between items-start"
               >
                 <div className="flex-1">
-                  <p className="font-semibold text-lg">{experience.poste}</p>
+                  <p className="font-semibold text-lg">{experience.titre}</p>
                   {experience.entreprise && (
                     <p className="text-sm text-muted-foreground">
                       {experience.entreprise}
@@ -1092,7 +1154,7 @@ function ExperiencesSection({ cv }: { cv: any }) {
                     {new Date(experience.dateDebut).toLocaleDateString()} -{" "}
                     {experience.dateFin
                       ? new Date(experience.dateFin).toLocaleDateString()
-                      : "Present"}
+                      : t("cv.present")}
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -1119,7 +1181,7 @@ function ExperiencesSection({ cv }: { cv: any }) {
           </div>
         ) : (
           <p className="text-center text-muted-foreground py-8">
-            No experience added yet
+            {t("cv.noExperienceAdded")}
           </p>
         )}
       </CardContent>
@@ -1128,7 +1190,8 @@ function ExperiencesSection({ cv }: { cv: any }) {
 }
 
 // ==================== COMPETENCES SECTION ====================
-function CompetencesSection({ cv }: { cv: any }) {
+function CompetencesSection() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -1151,9 +1214,9 @@ function CompetencesSection({ cv }: { cv: any }) {
       queryClient.invalidateQueries({ queryKey: ["cv-competences"] });
       setFormData({ nom: "", niveau: "intermediaire" });
       setShowForm(false);
-      toast.success("Skill added");
+      toast.success(t("cv.itemAdded"));
     },
-    onError: () => toast.error("Failed to add skill"),
+    onError: () => toast.error(t("cv.failedToAddSkill")),
   });
 
   const updateCompetenceMutation = useMutation({
@@ -1169,23 +1232,23 @@ function CompetencesSection({ cv }: { cv: any }) {
       setFormData({ nom: "", niveau: "intermediaire" });
       setEditingId(null);
       setShowForm(false);
-      toast.success("Skill updated");
+      toast.success(t("cv.itemUpdated"));
     },
-    onError: () => toast.error("Failed to update skill"),
+    onError: () => toast.error(t("cv.failedToUpdateSkill")),
   });
 
   const deleteCompetenceMutation = useMutation({
     mutationFn: (id: number) => cvApi.deleteCompetence(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cv-competences"] });
-      toast.success("Skill deleted");
+      toast.success(t("cv.itemDeleted"));
     },
-    onError: () => toast.error("Failed to delete skill"),
+    onError: () => toast.error(t("cv.failedToDeleteSkill")),
   });
 
   const handleAddCompetence = () => {
     if (!formData.nom.trim()) {
-      toast.error("Skill name is required");
+      toast.error(t("cv.skillNameRequired"));
       return;
     }
     if (editingId) {
@@ -1206,12 +1269,12 @@ function CompetencesSection({ cv }: { cv: any }) {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
           <Award className="h-5 w-5" />
-          Skills
+          {t("cv.skills")}
         </CardTitle>
         {!showForm && (
           <Button size="sm" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-1" />
-            Add
+            {t("cv.add")}
           </Button>
         )}
       </CardHeader>
@@ -1219,7 +1282,7 @@ function CompetencesSection({ cv }: { cv: any }) {
         {showForm && (
           <div className="border-l-4 border-purple-500 pl-4 space-y-3 bg-purple-50 p-4 rounded">
             <Input
-              placeholder="Skill name *"
+              placeholder={t("cv.skillNameRequired")}
               value={formData.nom}
               onChange={(e) =>
                 setFormData({ ...formData, nom: e.target.value })
@@ -1235,10 +1298,12 @@ function CompetencesSection({ cv }: { cv: any }) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="debutant">Beginner</SelectItem>
-                <SelectItem value="intermediaire">Intermediate</SelectItem>
-                <SelectItem value="avance">Advanced</SelectItem>
-                <SelectItem value="expert">Expert</SelectItem>
+                <SelectItem value="debutant">{t("cv.beginner")}</SelectItem>
+                <SelectItem value="intermediaire">
+                  {t("cv.intermediate")}
+                </SelectItem>
+                <SelectItem value="avance">{t("cv.advanced")}</SelectItem>
+                <SelectItem value="expert">{t("cv.expert")}</SelectItem>
               </SelectContent>
             </Select>
             <div className="flex gap-2">
@@ -1250,7 +1315,7 @@ function CompetencesSection({ cv }: { cv: any }) {
                 }
                 size="sm"
               >
-                {editingId ? "Update" : "Save"}
+                {editingId ? t("common.update") : t("common.save")}
               </Button>
               <Button
                 variant="outline"
@@ -1261,7 +1326,7 @@ function CompetencesSection({ cv }: { cv: any }) {
                 }}
                 size="sm"
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
             </div>
           </div>
@@ -1300,7 +1365,7 @@ function CompetencesSection({ cv }: { cv: any }) {
           </div>
         ) : (
           <p className="text-center text-muted-foreground py-8">
-            No skills added yet
+            {t("cv.noSkillsAdded")}
           </p>
         )}
       </CardContent>
@@ -1309,7 +1374,8 @@ function CompetencesSection({ cv }: { cv: any }) {
 }
 
 // ==================== LANGUES SECTION ====================
-function LanguesSection({ cv }: { cv: any }) {
+function LanguesSection() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -1332,9 +1398,9 @@ function LanguesSection({ cv }: { cv: any }) {
       queryClient.invalidateQueries({ queryKey: ["cv-langues"] });
       setFormData({ nom: "", niveau: "B1" });
       setShowForm(false);
-      toast.success("Language added");
+      toast.success(t("cv.itemAdded"));
     },
-    onError: () => toast.error("Failed to add language"),
+    onError: () => toast.error(t("cv.failedToAddLanguage")),
   });
 
   const updateLangueMutation = useMutation({
@@ -1345,23 +1411,23 @@ function LanguesSection({ cv }: { cv: any }) {
       setFormData({ nom: "", niveau: "B1" });
       setEditingId(null);
       setShowForm(false);
-      toast.success("Language updated");
+      toast.success(t("cv.itemUpdated"));
     },
-    onError: () => toast.error("Failed to update language"),
+    onError: () => toast.error(t("cv.failedToUpdateLanguage")),
   });
 
   const deleteLangueMutation = useMutation({
     mutationFn: (id: number) => cvApi.deleteLangue(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cv-langues"] });
-      toast.success("Language deleted");
+      toast.success(t("cv.itemDeleted"));
     },
-    onError: () => toast.error("Failed to delete language"),
+    onError: () => toast.error(t("cv.failedToDeleteLanguage")),
   });
 
   const handleAddLangue = () => {
     if (!formData.nom.trim()) {
-      toast.error("Language name is required");
+      toast.error(t("cv.languageNameRequired"));
       return;
     }
     if (editingId) {
@@ -1382,12 +1448,12 @@ function LanguesSection({ cv }: { cv: any }) {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
           <Globe className="h-5 w-5" />
-          Languages
+          {t("cv.languages")}
         </CardTitle>
         {!showForm && (
           <Button size="sm" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-1" />
-            Add
+            {t("cv.add")}
           </Button>
         )}
       </CardHeader>
@@ -1395,7 +1461,7 @@ function LanguesSection({ cv }: { cv: any }) {
         {showForm && (
           <div className="border-l-4 border-blue-500 pl-4 space-y-3 bg-blue-50 p-4 rounded">
             <Input
-              placeholder="Language name *"
+              placeholder={t("cv.languageNameRequired")}
               value={formData.nom}
               onChange={(e) =>
                 setFormData({ ...formData, nom: e.target.value })
@@ -1411,12 +1477,14 @@ function LanguesSection({ cv }: { cv: any }) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="A1">A1 (Beginner)</SelectItem>
-                <SelectItem value="A2">A2 (Elementary)</SelectItem>
-                <SelectItem value="B1">B1 (Intermediate)</SelectItem>
-                <SelectItem value="B2">B2 (Upper Intermediate)</SelectItem>
-                <SelectItem value="C1">C1 (Advanced)</SelectItem>
-                <SelectItem value="C2">C2 (Proficient)</SelectItem>
+                <SelectItem value="A1">{t("cv.a1Beginner")}</SelectItem>
+                <SelectItem value="A2">{t("cv.a2Elementary")}</SelectItem>
+                <SelectItem value="B1">{t("cv.b1Intermediate")}</SelectItem>
+                <SelectItem value="B2">
+                  {t("cv.b2UpperIntermediate")}
+                </SelectItem>
+                <SelectItem value="C1">{t("cv.c1Advanced")}</SelectItem>
+                <SelectItem value="C2">{t("cv.c2Proficient")}</SelectItem>
               </SelectContent>
             </Select>
             <div className="flex gap-2">
@@ -1427,7 +1495,7 @@ function LanguesSection({ cv }: { cv: any }) {
                 }
                 size="sm"
               >
-                {editingId ? "Update" : "Save"}
+                {editingId ? t("common.update") : t("common.save")}
               </Button>
               <Button
                 variant="outline"
@@ -1438,7 +1506,7 @@ function LanguesSection({ cv }: { cv: any }) {
                 }}
                 size="sm"
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
             </div>
           </div>
@@ -1454,7 +1522,7 @@ function LanguesSection({ cv }: { cv: any }) {
                 <div className="flex-1">
                   <p className="font-semibold">{langue.nom}</p>
                   <p className="text-sm text-muted-foreground">
-                    Level: {langue.niveau}
+                    {t("cv.level")}: {langue.niveau}
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -1479,7 +1547,7 @@ function LanguesSection({ cv }: { cv: any }) {
           </div>
         ) : (
           <p className="text-center text-muted-foreground py-8">
-            No languages added yet
+            {t("cv.noLanguagesAdded")}
           </p>
         )}
       </CardContent>

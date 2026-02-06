@@ -13,6 +13,7 @@ import {
 import { postsApi } from "@/api/posts";
 import { useAuthStore } from "@/store/auth";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import type { ReactionType } from "@/types";
 import { transformUrl } from "@/lib/url-utils";
 import { ImagePreviewDialog } from "@/components/image-preview-dialog";
@@ -30,6 +31,7 @@ const REACTIONS: { label: string; value: ReactionType }[] = [
 ];
 
 export function FeedPage() {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>(
@@ -58,7 +60,7 @@ export function FeedPage() {
     (post) => {
       // New post received
       setPosts((prev) => [post, ...prev]);
-      toast.success("New post added to feed");
+      toast.success(t("posts.newPostAdded"));
     },
     (comment) => {
       // New comment received - update the post
@@ -81,7 +83,7 @@ export function FeedPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
     },
-    onError: () => toast.error("Failed to add comment"),
+    onError: () => toast.error(t("posts.failedToAddComment")),
   });
 
   const reactMutation = useMutation({
@@ -90,7 +92,7 @@ export function FeedPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
     },
-    onError: () => toast.error("Failed to react"),
+    onError: () => toast.error(t("errors.somethingWentWrong")),
   });
 
   const removeReactionMutation = useMutation({
@@ -98,7 +100,7 @@ export function FeedPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
     },
-    onError: () => toast.error("Failed to remove reaction"),
+    onError: () => toast.error(t("errors.somethingWentWrong")),
   });
 
   const deleteCommentMutation = useMutation({
@@ -112,7 +114,7 @@ export function FeedPage() {
         })),
       );
     },
-    onError: () => toast.error("Failed to delete comment"),
+    onError: () => toast.error(t("posts.failedToDeleteComment")),
   });
 
   const postsToDisplay = posts.length > 0 ? posts : (data?.posts ?? []);
@@ -156,8 +158,8 @@ export function FeedPage() {
   };
 
   const getFileName = (url?: string) => {
-    if (!url) return "Document";
-    return url.split("/").pop() || "Document";
+    if (!url) return t("posts.document");
+    return url.split("/").pop() || t("posts.document");
   };
 
   const getReactionCounts = (reactions: (typeof posts)[0]["reactions"]) => {
@@ -191,17 +193,23 @@ export function FeedPage() {
     <div className="max-w-3xl mx-auto space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Feed</CardTitle>
+          <CardTitle>{t("nav.feed")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {isLoading && (
-            <p className="text-sm text-muted-foreground">Loading feed...</p>
+            <p className="text-sm text-muted-foreground">
+              {t("posts.loadingFeed")}
+            </p>
           )}
           {isError && (
-            <p className="text-sm text-red-600">Failed to load posts.</p>
+            <p className="text-sm text-red-600">
+              {t("posts.failedToLoadPosts")}
+            </p>
           )}
           {!isLoading && posts.length === 0 && (
-            <p className="text-sm text-muted-foreground">No posts to show.</p>
+            <p className="text-sm text-muted-foreground">
+              {t("posts.noPostsToShow")}
+            </p>
           )}
 
           {postsToDisplay.map((post) => {
@@ -245,7 +253,9 @@ export function FeedPage() {
                               : "border-yellow-200 text-yellow-700 bg-yellow-50"
                           }`}
                         >
-                          {post.isPublic ? "Public" : "Private"}
+                          {post.isPublic
+                            ? t("posts.public")
+                            : t("posts.connectionsOnly")}
                         </span>
                       </div>
                     </div>
@@ -265,13 +275,16 @@ export function FeedPage() {
                         <div className="text-xs text-blue-700 mt-1 space-y-1">
                           {post.publication.publicationDate && (
                             <div>
-                              Published:{" "}
+                              {t("posts.published")}:{" "}
                               {new Date(
                                 post.publication.publicationDate,
                               ).toLocaleDateString()}
                             </div>
                           )}
-                          <div>Citations: {post.publication.citationCount}</div>
+                          <div>
+                            {t("posts.citations")}:{" "}
+                            {post.publication.citationCount}
+                          </div>
                         </div>
                         {post.publication.googleScholarUrl && (
                           <a
@@ -280,7 +293,7 @@ export function FeedPage() {
                             rel="noreferrer"
                             className="text-xs text-blue-600 underline hover:text-blue-800 inline-block mt-2"
                           >
-                            View on Google Scholar
+                            {t("posts.viewOnGoogleScholar")}
                           </a>
                         )}
                       </div>
@@ -381,16 +394,20 @@ export function FeedPage() {
                     <span>·</span>
                   )}
                   {post.comments.length > 0 && (
-                    <span>{post.comments.length} comments</span>
+                    <span>
+                      {post.comments.length} {t("posts.comments")}
+                    </span>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor={`comment-${post.id}`}>Add comment</Label>
+                  <Label htmlFor={`comment-${post.id}`}>
+                    {t("posts.addComment")}
+                  </Label>
                   <div className="flex gap-2">
                     <Input
                       id={`comment-${post.id}`}
-                      placeholder="Write a comment..."
+                      placeholder={t("posts.writeComment")}
                       value={commentDrafts[post.id] || ""}
                       onChange={(e) =>
                         setCommentDrafts((prev) => ({
@@ -404,7 +421,7 @@ export function FeedPage() {
                       onClick={() => {
                         const draft = (commentDrafts[post.id] || "").trim();
                         if (!draft) {
-                          toast.error("Comment cannot be empty");
+                          toast.error(t("posts.commentEmpty"));
                           return;
                         }
                         addCommentMutation.mutate({
@@ -417,7 +434,7 @@ export function FeedPage() {
                         }));
                       }}
                     >
-                      Comment
+                      {t("posts.comment")}
                     </Button>
                   </div>
                 </div>
@@ -425,7 +442,7 @@ export function FeedPage() {
                 {post.comments.length > 0 && (
                   <div className="space-y-2">
                     <div className="text-sm text-muted-foreground">
-                      {post.comments.length} comments
+                      {post.comments.length} {t("posts.comments")}
                     </div>
                     {post.comments.slice(0, 2).map((comment) => (
                       <div
@@ -460,7 +477,7 @@ export function FeedPage() {
                         onClick={() => setSelectedPostForComments(post.id)}
                         className="w-full"
                       >
-                        View all {post.comments.length} comments
+                        {t("posts.viewComments")} ({post.comments.length})
                       </Button>
                     )}
                   </div>
@@ -487,7 +504,7 @@ export function FeedPage() {
       >
         <DialogContent className="max-w-2xl h-[80vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>All Comments</DialogTitle>
+            <DialogTitle>{t("posts.allComments")}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto pr-4">
             <div className="space-y-3">

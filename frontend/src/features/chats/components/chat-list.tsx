@@ -10,6 +10,7 @@ import { useAuthStore } from "@/store/auth";
 import { chatsApi } from "@/api/chats";
 import { Chat } from "@/types";
 import { transformUrl } from "@/lib/url-utils";
+import { useTranslation } from "react-i18next";
 
 interface ChatListProps {
   onSelectChat: (chat: Chat) => void;
@@ -17,6 +18,7 @@ interface ChatListProps {
 }
 
 export function ChatList({ onSelectChat, selectedChat }: ChatListProps) {
+  const { t } = useTranslation();
   const { user: currentUser } = useAuth();
   const { user: storeUser } = useAuthStore();
   const [chats, setChats] = useState<Chat[]>([]);
@@ -126,7 +128,7 @@ export function ChatList({ onSelectChat, selectedChat }: ChatListProps) {
         <div className="relative">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search conversations..."
+            placeholder={t("chats.searchPlaceholder")}
             className="pl-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -140,7 +142,7 @@ export function ChatList({ onSelectChat, selectedChat }: ChatListProps) {
         </div>
       ) : filteredChats.length === 0 ? (
         <p className="text-center text-muted-foreground py-8">
-          {searchQuery ? "No conversations found" : "No conversations yet"}
+          {searchQuery ? t("chats.noChats") : t("chats.noChats")}
         </p>
       ) : (
         <ScrollArea className="h-[600px] pr-4">

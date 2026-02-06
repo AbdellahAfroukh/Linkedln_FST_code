@@ -13,6 +13,7 @@ import {
 import { postsApi } from "@/api/posts";
 import { useAuthStore } from "@/store/auth";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import type { ReactionType } from "@/types";
 import { transformUrl } from "@/lib/url-utils";
 import { FileUpload } from "@/components/file-upload";
@@ -29,6 +30,7 @@ const REACTIONS: { label: string; value: ReactionType }[] = [
 ];
 
 export function PostsFeedPage() {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [content, setContent] = useState("");
@@ -59,9 +61,9 @@ export function PostsFeedPage() {
       setIsPublic(true);
       queryClient.invalidateQueries({ queryKey: ["posts", "my-posts"] });
       queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
-      toast.success("Post created");
+      toast.success(t("posts.postCreated"));
     },
-    onError: () => toast.error("Failed to create post"),
+    onError: () => toast.error(t("posts.failedToCreatePost")),
   });
 
   const deletePostMutation = useMutation({
@@ -75,9 +77,9 @@ export function PostsFeedPage() {
           queryKey: ["google-scholar", "publications"],
         });
       }
-      toast.success("Post deleted");
+      toast.success(t("posts.postDeleted"));
     },
-    onError: () => toast.error("Failed to delete post"),
+    onError: () => toast.error(t("posts.failedToDeletePost")),
   });
 
   const updateVisibilityMutation = useMutation({
@@ -86,9 +88,9 @@ export function PostsFeedPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["posts", "my-posts"] });
       queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
-      toast.success("Post visibility updated");
+      toast.success(t("posts.visibilityUpdated"));
     },
-    onError: () => toast.error("Failed to update visibility"),
+    onError: () => toast.error(t("posts.failedToUpdateVisibility")),
   });
 
   const addCommentMutation = useMutation({
@@ -98,7 +100,7 @@ export function PostsFeedPage() {
       queryClient.invalidateQueries({ queryKey: ["posts", "my-posts"] });
       queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
     },
-    onError: () => toast.error("Failed to add comment"),
+    onError: () => toast.error(t("posts.failedToAddComment")),
   });
 
   const deleteCommentMutation = useMutation({
@@ -106,9 +108,9 @@ export function PostsFeedPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["posts", "my-posts"] });
       queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
-      toast.success("Comment deleted");
+      toast.success(t("posts.commentDeleted"));
     },
-    onError: () => toast.error("Failed to delete comment"),
+    onError: () => toast.error(t("posts.failedToDeleteComment")),
   });
 
   const reactMutation = useMutation({
@@ -118,7 +120,7 @@ export function PostsFeedPage() {
       queryClient.invalidateQueries({ queryKey: ["posts", "my-posts"] });
       queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
     },
-    onError: () => toast.error("Failed to react"),
+    onError: () => toast.error(t("posts.failedToReact")),
   });
 
   const removeReactionMutation = useMutation({
@@ -127,14 +129,14 @@ export function PostsFeedPage() {
       queryClient.invalidateQueries({ queryKey: ["posts", "my-posts"] });
       queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
     },
-    onError: () => toast.error("Failed to remove reaction"),
+    onError: () => toast.error(t("posts.failedToRemoveReaction")),
   });
 
   const myPosts = myPostsData?.posts ?? [];
 
   const handleCreatePost = () => {
     if (!content.trim()) {
-      toast.error("Post content is required");
+      toast.error(t("posts.postContentRequired"));
       return;
     }
     createPostMutation.mutate({
@@ -221,20 +223,20 @@ export function PostsFeedPage() {
       {/* Create Post Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Create Post</CardTitle>
+          <CardTitle>{t("posts.createPost")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="post-content">Content</Label>
+            <Label htmlFor="post-content">{t("posts.postContent")}</Label>
             <Input
               id="post-content"
-              placeholder="Share something..."
+              placeholder={t("posts.postContent")}
               value={content}
               onChange={(e) => setContent(e.target.value)}
             />
           </div>
           <FileUpload
-            label="Attachment (Image or Document)"
+            label={t("posts.attachmentImageOrDocument")}
             type="any"
             currentUrl={attachement}
             onUploadSuccess={(url) => setAttachement(url)}
@@ -245,13 +247,15 @@ export function PostsFeedPage() {
               checked={isPublic}
               onChange={(e) => setIsPublic(e.target.checked)}
             />
-            Public post
+            {t("posts.public")}
           </label>
           <Button
             onClick={handleCreatePost}
             disabled={createPostMutation.isPending}
           >
-            {createPostMutation.isPending ? "Posting..." : "Post"}
+            {createPostMutation.isPending
+              ? t("common.loading")
+              : t("posts.createPost")}
           </Button>
         </CardContent>
       </Card>
@@ -259,17 +263,17 @@ export function PostsFeedPage() {
       {/* My Posts Section */}
       <Card>
         <CardHeader>
-          <CardTitle>My Posts</CardTitle>
+          <CardTitle>{t("posts.myPosts")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {myPostsLoading && (
             <p className="text-sm text-muted-foreground">
-              Loading your posts...
+              {t("common.loading")}
             </p>
           )}
           {!myPostsLoading && myPosts.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              You haven't created any posts yet.
+              {t("posts.noPostsYet")}
             </p>
           )}
 
@@ -314,7 +318,9 @@ export function PostsFeedPage() {
                               : "border-yellow-200 text-yellow-700 bg-yellow-50"
                           }`}
                         >
-                          {post.isPublic ? "Public" : "Private"}
+                          {post.isPublic
+                            ? t("posts.public")
+                            : t("posts.private")}
                         </span>
                       </div>
                     </div>
@@ -332,14 +338,16 @@ export function PostsFeedPage() {
                         }
                         disabled={updateVisibilityMutation.isPending}
                       >
-                        {post.isPublic ? "Make Private" : "Make Public"}
+                        {post.isPublic
+                          ? t("posts.makePrivate")
+                          : t("posts.makePublic")}
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => deletePostMutation.mutate(post)}
                       >
-                        Delete
+                        {t("common.delete")}
                       </Button>
                     </div>
                   )}
@@ -358,13 +366,16 @@ export function PostsFeedPage() {
                         <div className="text-xs text-blue-700 mt-1 space-y-1">
                           {post.publication.publicationDate && (
                             <div>
-                              Published:{" "}
+                              {t("posts.published")}:{" "}
                               {new Date(
                                 post.publication.publicationDate,
                               ).toLocaleDateString()}
                             </div>
                           )}
-                          <div>Citations: {post.publication.citationCount}</div>
+                          <div>
+                            {t("posts.citations")}:{" "}
+                            {post.publication.citationCount}
+                          </div>
                         </div>
                         {post.publication.googleScholarUrl && (
                           <a
@@ -373,7 +384,7 @@ export function PostsFeedPage() {
                             rel="noreferrer"
                             className="text-xs text-blue-600 underline hover:text-blue-800 inline-block mt-2"
                           >
-                            View on Google Scholar
+                            {t("posts.viewOnGoogleScholar")}
                           </a>
                         )}
                       </div>
@@ -416,7 +427,7 @@ export function PostsFeedPage() {
                             {getFileName(post.attachement)}
                           </p>
                           <p className="text-xs text-gray-500">
-                            Click to download
+                            {t("posts.clickToDownload")}
                           </p>
                         </div>
                         <span className="text-gray-400">↓</span>
@@ -474,16 +485,20 @@ export function PostsFeedPage() {
                     <span>·</span>
                   )}
                   {post.comments.length > 0 && (
-                    <span>{post.comments.length} comments</span>
+                    <span>
+                      {post.comments.length} {t("posts.comments")}
+                    </span>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor={`comment-${post.id}`}>Add comment</Label>
+                  <Label htmlFor={`comment-${post.id}`}>
+                    {t("posts.addComment")}
+                  </Label>
                   <div className="flex gap-2">
                     <Input
                       id={`comment-${post.id}`}
-                      placeholder="Write a comment..."
+                      placeholder={t("posts.writeComment")}
                       value={commentDrafts[post.id] || ""}
                       onChange={(e) =>
                         setCommentDrafts((prev) => ({
@@ -497,7 +512,7 @@ export function PostsFeedPage() {
                       onClick={() => {
                         const draft = (commentDrafts[post.id] || "").trim();
                         if (!draft) {
-                          toast.error("Comment cannot be empty");
+                          toast.error(t("posts.commentEmpty"));
                           return;
                         }
                         addCommentMutation.mutate({
@@ -510,7 +525,7 @@ export function PostsFeedPage() {
                         }));
                       }}
                     >
-                      Comment
+                      {t("posts.comment")}
                     </Button>
                   </div>
                 </div>
@@ -518,7 +533,7 @@ export function PostsFeedPage() {
                 {post.comments.length > 0 && (
                   <div className="space-y-2">
                     <div className="text-sm text-muted-foreground">
-                      {post.comments.length} comments
+                      {post.comments.length} {t("posts.comments")}
                     </div>
                     {post.comments.slice(0, 2).map((comment) => (
                       <div
@@ -553,7 +568,9 @@ export function PostsFeedPage() {
                         onClick={() => setSelectedPostForComments(post.id)}
                         className="w-full"
                       >
-                        View all {post.comments.length} comments
+                        {t("posts.viewAllComments", {
+                          count: post.comments.length,
+                        })}
                       </Button>
                     )}
                   </div>
@@ -580,7 +597,7 @@ export function PostsFeedPage() {
       >
         <DialogContent className="max-w-2xl h-[80vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>All Comments</DialogTitle>
+            <DialogTitle>{t("posts.allComments")}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto pr-4">
             <div className="space-y-3">

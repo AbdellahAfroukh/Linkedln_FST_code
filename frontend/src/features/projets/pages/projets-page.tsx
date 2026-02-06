@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { transformUrl } from "@/lib/url-utils";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +47,7 @@ function ProjectCard({
   onDelete,
   onViewProfile,
 }: ProjectCardProps) {
+  const { t } = useTranslation();
   const getStatusColor = (status: string) => {
     switch (status) {
       case "terminé":
@@ -75,7 +77,7 @@ function ProjectCard({
           </div>
           {projet.user && (
             <p className="text-sm text-gray-600 mt-1">
-              By{" "}
+              {t("projects.by")}{" "}
               <button
                 type="button"
                 onClick={() => onViewProfile?.(projet.user.id)}
@@ -90,18 +92,18 @@ function ProjectCard({
         {canEdit && onEdit && onDelete && (
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => onEdit(projet)}>
-              Edit
+              {t("common.edit")}
             </Button>
             <Button
               variant="destructive"
               size="sm"
               onClick={() => {
-                if (confirm("Are you sure you want to delete this project?")) {
+                if (confirm(t("projects.deleteConfirm"))) {
                   onDelete(projet.id);
                 }
               }}
             >
-              Delete
+              {t("common.delete")}
             </Button>
           </div>
         )}
@@ -111,21 +113,25 @@ function ProjectCard({
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
         <div>
-          <span className="text-gray-600">Budget:</span>
-          <p className="font-semibold">{projet.budget.toLocaleString()} MAD</p>
+          <span className="text-gray-600">{t("projects.budget")}:</span>
+          <p className="font-semibold">
+            {projet.budget.toLocaleString()} {t("projects.mad")}
+          </p>
         </div>
         <div>
-          <span className="text-gray-600">Duration:</span>
-          <p className="font-semibold">{projet.dureeEnMois} months</p>
+          <span className="text-gray-600">{t("projects.duration")}:</span>
+          <p className="font-semibold">
+            {projet.dureeEnMois} {t("projects.months")}
+          </p>
         </div>
         <div>
-          <span className="text-gray-600">Start Date:</span>
+          <span className="text-gray-600">{t("projects.startDate")}:</span>
           <p className="font-semibold">
             {new Date(projet.dateDebut).toLocaleDateString()}
           </p>
         </div>
         <div>
-          <span className="text-gray-600">End Date:</span>
+          <span className="text-gray-600">{t("projects.endDate")}:</span>
           <p className="font-semibold">
             {new Date(
               new Date(projet.dateDebut).getTime() +
@@ -139,6 +145,7 @@ function ProjectCard({
 }
 
 export function ProjetsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
@@ -173,18 +180,18 @@ export function ProjetsPage() {
     mutationFn: connectionsApi.send,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["connections"] });
-      toast.success("Connection request sent");
+      toast.success(t("connections.requestSent"));
     },
-    onError: () => toast.error("Failed to send request"),
+    onError: () => toast.error(t("errors.somethingWentWrong")),
   });
 
   const cancelConnectionMutation = useMutation({
     mutationFn: connectionsApi.reject,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["connections"] });
-      toast.success("Request cancelled");
+      toast.success(t("connections.cancelRequest"));
     },
-    onError: () => toast.error("Failed to cancel request"),
+    onError: () => toast.error(t("errors.somethingWentWrong")),
   });
 
   const messageMutation = useMutation({
@@ -193,7 +200,7 @@ export function ProjetsPage() {
       setIsProfileDialogOpen(false);
       navigate("/chats");
     },
-    onError: () => toast.error("Failed to open chat"),
+    onError: () => toast.error(t("errors.somethingWentWrong")),
   });
 
   const getInitials = (name: string) => {
@@ -211,7 +218,7 @@ export function ProjetsPage() {
       setSelectedUser(profile);
       setIsProfileDialogOpen(true);
     } catch {
-      toast.error("Failed to load user profile");
+      toast.error(t("errors.somethingWentWrong"));
     }
   };
 
@@ -263,9 +270,9 @@ export function ProjetsPage() {
         statut: "planifié",
       });
       setIsCreating(false);
-      toast.success("Project created successfully");
+      toast.success(t("projects.projectCreated"));
     },
-    onError: () => toast.error("Failed to create project"),
+    onError: () => toast.error(t("projects.failedToCreate")),
   });
 
   const updateMutation = useMutation({
@@ -282,23 +289,23 @@ export function ProjetsPage() {
         dureeEnMois: 12,
         statut: "planifié",
       });
-      toast.success("Project updated successfully");
+      toast.success(t("projects.projectUpdated"));
     },
-    onError: () => toast.error("Failed to update project"),
+    onError: () => toast.error(t("projects.failedToUpdate")),
   });
 
   const deleteMutation = useMutation({
     mutationFn: projetsApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projets"] });
-      toast.success("Project deleted successfully");
+      toast.success(t("projects.projectDeleted"));
     },
-    onError: () => toast.error("Failed to delete project"),
+    onError: () => toast.error(t("projects.failedToDelete")),
   });
 
   const handleSubmit = () => {
     if (!formData.titre || !formData.description || formData.budget <= 0) {
-      toast.error("Please fill in all required fields");
+      toast.error(t("errors.tryAgain"));
       return;
     }
 
@@ -345,14 +352,14 @@ export function ProjetsPage() {
     <div className="max-w-6xl mx-auto space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Research Projects</CardTitle>
+          <CardTitle>{t("projects.researchProjects")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="search">Search Projects</Label>
+            <Label htmlFor="search">{t("projects.searchProjects")}</Label>
             <Input
               id="search"
-              placeholder="Search by title or description..."
+              placeholder={t("projects.searchByTitleOrDescription")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -362,28 +369,32 @@ export function ProjetsPage() {
             <>
               {!isCreating ? (
                 <Button onClick={() => setIsCreating(true)}>
-                  Create New Project
+                  {t("projects.createNewProject")}
                 </Button>
               ) : (
                 <div className="border rounded-lg p-4 space-y-4 bg-gray-50">
                   <h3 className="font-semibold">
-                    {editingId ? "Edit Project" : "Create New Project"}
+                    {editingId
+                      ? t("projects.editProject")
+                      : t("projects.createNewProject")}
                   </h3>
 
                   <div className="space-y-2">
-                    <Label htmlFor="titre">Project Title</Label>
+                    <Label htmlFor="titre">{t("projects.projectTitle")}</Label>
                     <Input
                       id="titre"
                       value={formData.titre}
                       onChange={(e) =>
                         setFormData({ ...formData, titre: e.target.value })
                       }
-                      placeholder="Enter project title"
+                      placeholder={t("projects.projectTitlePlaceholder")}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
+                    <Label htmlFor="description">
+                      {t("projects.description")}
+                    </Label>
                     <textarea
                       id="description"
                       value={formData.description}
@@ -393,7 +404,7 @@ export function ProjetsPage() {
                           description: e.target.value,
                         })
                       }
-                      placeholder="Enter project description"
+                      placeholder={t("projects.descriptionPlaceholder")}
                       className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       rows={4}
                     />
@@ -401,7 +412,7 @@ export function ProjetsPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="budget">Budget</Label>
+                      <Label htmlFor="budget">{t("projects.budget")}</Label>
                       <Input
                         id="budget"
                         type="number"
@@ -419,7 +430,9 @@ export function ProjetsPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="duration">Duration (months)</Label>
+                      <Label htmlFor="duration">
+                        {t("projects.durationMonths")}
+                      </Label>
                       <Input
                         id="duration"
                         type="number"
@@ -438,7 +451,9 @@ export function ProjetsPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="dateDebut">Start Date</Label>
+                      <Label htmlFor="dateDebut">
+                        {t("projects.startDate")}
+                      </Label>
                       <Input
                         id="dateDebut"
                         type="date"
@@ -453,7 +468,7 @@ export function ProjetsPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="statut">Status</Label>
+                      <Label htmlFor="statut">{t("projects.status")}</Label>
                       <Select
                         value={formData.statut}
                         onValueChange={(value) =>
@@ -464,9 +479,15 @@ export function ProjetsPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="planifié">Planned</SelectItem>
-                          <SelectItem value="en cours">In Progress</SelectItem>
-                          <SelectItem value="terminé">Completed</SelectItem>
+                          <SelectItem value="planifié">
+                            {t("projects.planned")}
+                          </SelectItem>
+                          <SelectItem value="en cours">
+                            {t("projects.inProgress")}
+                          </SelectItem>
+                          <SelectItem value="terminé">
+                            {t("projects.completed")}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -479,7 +500,7 @@ export function ProjetsPage() {
                         createMutation.isPending || updateMutation.isPending
                       }
                     >
-                      {editingId ? "Update" : "Create"}
+                      {editingId ? t("common.update") : t("common.create")}
                     </Button>
                     <Button
                       variant="outline"
@@ -488,7 +509,7 @@ export function ProjetsPage() {
                         createMutation.isPending || updateMutation.isPending
                       }
                     >
-                      Cancel
+                      {t("common.cancel")}
                     </Button>
                   </div>
                 </div>
@@ -501,18 +522,18 @@ export function ProjetsPage() {
       {searchQuery.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Search Results</CardTitle>
+            <CardTitle>{t("projects.searchResults")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {searchQueryHook.isLoading && (
               <p className="text-sm text-muted-foreground">
-                Loading projects...
+                {t("projects.loadingProjects")}
               </p>
             )}
 
             {!searchQueryHook.isLoading && searchProjets.length === 0 && (
               <p className="text-sm text-muted-foreground">
-                No projects found.
+                {t("projects.noProjectsFound")}
               </p>
             )}
 
@@ -535,18 +556,18 @@ export function ProjetsPage() {
       {user?.user_type === "enseignant" && searchQuery.length === 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>My Projects</CardTitle>
+            <CardTitle>{t("projects.myProjects")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {myProjetsQuery.isLoading && (
               <p className="text-sm text-muted-foreground">
-                Loading projects...
+                {t("projects.loadingProjects")}
               </p>
             )}
 
             {!myProjetsQuery.isLoading && myProjets.length === 0 && (
               <p className="text-sm text-muted-foreground">
-                No projects found.
+                {t("projects.noProjectsFound")}
               </p>
             )}
 
@@ -566,15 +587,19 @@ export function ProjetsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Projects</CardTitle>
+          <CardTitle>{t("projects.allProjects")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {allProjetsQuery.isLoading && (
-            <p className="text-sm text-muted-foreground">Loading projects...</p>
+            <p className="text-sm text-muted-foreground">
+              {t("projects.loadingProjects")}
+            </p>
           )}
 
           {!allProjetsQuery.isLoading && allProjets.length === 0 && (
-            <p className="text-sm text-muted-foreground">No projects found.</p>
+            <p className="text-sm text-muted-foreground">
+              {t("projects.noProjectsFound")}
+            </p>
           )}
 
           {allProjets.map((projet) => (
@@ -596,7 +621,7 @@ export function ProjetsPage() {
       <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
           <DialogHeader className="px-6 pt-6">
-            <DialogTitle>Profile</DialogTitle>
+            <DialogTitle>{t("projects.profile")}</DialogTitle>
           </DialogHeader>
           {selectedUser && (
             <>
@@ -608,13 +633,13 @@ export function ProjetsPage() {
               <div className="flex gap-2 pt-4 border-t px-6 pb-6">
                 {selectedUser.id === user?.id ? (
                   <Button variant="outline" className="flex-1" disabled>
-                    This is you
+                    {t("projects.thisIsYou")}
                   </Button>
                 ) : isConnected(selectedUser.id) ? (
                   <>
                     <Button variant="outline" disabled className="flex-1">
                       <UserCheck className="h-4 w-4 mr-2" />
-                      Already Connected
+                      {t("connections.alreadyConnected")}
                     </Button>
                     <Button
                       className="flex-1"
@@ -624,7 +649,7 @@ export function ProjetsPage() {
                       disabled={messageMutation.isPending}
                     >
                       <MessageCircle className="h-4 w-4 mr-2" />
-                      Message
+                      {t("connections.message")}
                     </Button>
                   </>
                 ) : hasPendingRequest(selectedUser.id) ? (
@@ -643,7 +668,7 @@ export function ProjetsPage() {
                     disabled={cancelConnectionMutation.isPending}
                   >
                     <UserPlus className="h-4 w-4 mr-2" />
-                    Cancel Request
+                    {t("connections.cancelRequest")}
                   </Button>
                 ) : (
                   <Button
@@ -657,7 +682,7 @@ export function ProjetsPage() {
                     disabled={sendConnectionMutation.isPending}
                   >
                     <UserPlus className="h-4 w-4 mr-2" />
-                    Connect
+                    {t("connections.connect")}
                   </Button>
                 )}
               </div>

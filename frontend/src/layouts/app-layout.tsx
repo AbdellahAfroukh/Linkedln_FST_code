@@ -21,9 +21,12 @@ import { cn } from "@/lib/utils";
 import { transformUrl } from "@/lib/url-utils";
 import { useIncomingRequestsCount } from "@/features/connections/hooks/use-incoming-requests-count";
 import { useChatsCount } from "@/features/chats/hooks/use-chats-count";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { useTranslation } from "react-i18next";
 
 export function AppLayout() {
   const { user, logout, fetchUser } = useAuthStore();
+  const { t } = useTranslation();
 
   // Fetch fresh user data on mount to ensure profile picture is current
   useEffect(() => {
@@ -51,24 +54,28 @@ export function AppLayout() {
   };
 
   const navItems = [
-    { to: "/dashboard", icon: Home, label: "Dashboard" },
-    { to: "/posts", icon: FileText, label: "My Posts" },
-    { to: "/feed", icon: Rss, label: "Feed" },
-    { to: "/people", icon: Users, label: "Find People" },
-    { to: "/connections", icon: Users, label: "Connections" },
-    { to: "/chats", icon: MessageSquare, label: "Messages" },
-    { to: "/projets", icon: FolderKanban, label: "Projects" },
-    { to: "/cv", icon: UserCircle, label: "My CV" },
-    { to: "/google-scholar", icon: GraduationCap, label: "Google Scholar" },
+    { to: "/dashboard", icon: Home, label: t("nav.dashboard") },
+    { to: "/posts", icon: FileText, label: t("nav.posts") },
+    { to: "/feed", icon: Rss, label: t("nav.feed") },
+    { to: "/people", icon: Users, label: t("nav.people") },
+    { to: "/connections", icon: Users, label: t("nav.connections") },
+    { to: "/chats", icon: MessageSquare, label: t("nav.chats") },
+    { to: "/projets", icon: FolderKanban, label: t("nav.projects") },
+    { to: "/cv", icon: UserCircle, label: t("nav.cv") },
+    {
+      to: "/google-scholar",
+      icon: GraduationCap,
+      label: t("nav.googleScholar"),
+    },
   ];
 
   if (user?.user_type === "admin") {
-    navItems.push({ to: "/admin", icon: Shield, label: "Admin Panel" });
+    navItems.push({ to: "/admin", icon: Shield, label: t("nav.admin") });
   } else {
     navItems.push({
       to: "/profile/settings",
       icon: Settings,
-      label: "Profile Settings",
+      label: t("nav.settings"),
     });
   }
 
@@ -95,6 +102,7 @@ export function AppLayout() {
           </div>
 
           <div className="flex items-center gap-3">
+            <LanguageSwitcher />
             <div className="h-9 w-9 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center border">
               {user?.photoDeProfil ? (
                 <img
@@ -147,12 +155,13 @@ export function AppLayout() {
               >
                 <item.icon className="h-5 w-5" />
                 <span>{item.label}</span>
-                {item.label === "Connections" && incomingRequestsCount > 0 && (
-                  <span className="ml-auto flex items-center justify-center h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold">
-                    {incomingRequestsCount}
-                  </span>
-                )}
-                {item.label === "Messages" && chatsCount > 0 && (
+                {item.label === t("nav.connections") &&
+                  incomingRequestsCount > 0 && (
+                    <span className="ml-auto flex items-center justify-center h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold">
+                      {incomingRequestsCount}
+                    </span>
+                  )}
+                {item.label === t("nav.chats") && chatsCount > 0 && (
                   <span className="ml-auto flex items-center justify-center h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold">
                     {chatsCount}
                   </span>

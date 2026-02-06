@@ -14,6 +14,7 @@ import { FileUpload } from "@/components/file-upload";
 import { ImagePreviewDialog } from "@/components/image-preview-dialog";
 import { transformUrl } from "@/lib/url-utils";
 import { useWebSocketChat } from "@/hooks/use-websocket-hooks";
+import { useTranslation } from "react-i18next";
 
 interface ChatThreadProps {
   chat: Chat | null;
@@ -21,6 +22,7 @@ interface ChatThreadProps {
 }
 
 export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
+  const { t } = useTranslation();
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -203,7 +205,7 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
     } catch (error) {
       console.error("Failed to send message:", error);
       toast({
-        title: "Error",
+        title: t("errors.somethingWentWrong"),
         description: "Failed to send message",
         variant: "destructive",
       });
@@ -219,13 +221,13 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
       // Invalidate chats to update unread count in case this was the last message
       queryClient.invalidateQueries({ queryKey: ["chats"] });
       toast({
-        title: "Success",
-        description: "Message deleted successfully",
+        title: t("common.success"),
+        description: t("chats.messageDeleted"),
       });
     } catch (error) {
       console.error("Failed to delete message:", error);
       toast({
-        title: "Error",
+        title: t("errors.somethingWentWrong"),
         description: "Failed to delete message",
         variant: "destructive",
       });
@@ -333,22 +335,20 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
                             : "justify-start"
                         }`}
                       >
-                        <div
-                          className={`flex gap-2 max-w-xs ${
-                            message.senderId === currentUser?.id
-                              ? "flex-row-reverse"
-                              : ""
-                          }`}
-                        >
-                          <Avatar className="h-8 w-8 flex-shrink-0">
-                            <AvatarImage
-                              src={transformUrl(message.sender?.photoDeProfil)}
-                              alt={message.sender?.fullName}
-                            />
-                            <AvatarFallback>
-                              {message.sender?.fullName.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
+                        <div className="flex gap-2 max-w-xs items-end">
+                          {message.senderId !== currentUser?.id && (
+                            <Avatar className="h-8 w-8 flex-shrink-0">
+                              <AvatarImage
+                                src={transformUrl(
+                                  message.sender?.photoDeProfil,
+                                )}
+                                alt={message.sender?.fullName}
+                              />
+                              <AvatarFallback>
+                                {message.sender?.fullName.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
                           <div className="relative group">
                             <div
                               className={`rounded-lg px-4 py-2 ${
@@ -425,6 +425,19 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
                               </Button>
                             )}
                           </div>
+                          {message.senderId === currentUser?.id && (
+                            <Avatar className="h-8 w-8 flex-shrink-0">
+                              <AvatarImage
+                                src={transformUrl(
+                                  message.sender?.photoDeProfil,
+                                )}
+                                alt={message.sender?.fullName}
+                              />
+                              <AvatarFallback>
+                                {message.sender?.fullName.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
                         </div>
                       </div>
                     ))
@@ -442,7 +455,7 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
                 />
                 <form onSubmit={handleSendMessage} className="flex gap-2">
                   <Input
-                    placeholder="Type a message..."
+                    placeholder={t("chats.typeMessage")}
                     value={messageInput}
                     onChange={(e) => setMessageInput(e.target.value)}
                     disabled={isSending}
