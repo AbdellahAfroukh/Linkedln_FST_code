@@ -12,8 +12,9 @@ export function useIncomingRequestsCount() {
   const incomingQuery = useQuery({
     queryKey: ["connections", "incoming"],
     queryFn: connectionsApi.listPendingIncoming,
-    refetchInterval: 1000, // Poll every 5 seconds
-    refetchIntervalPause: false, // Don't pause when window is hidden
+    // Removed polling - WebSocket handles real-time updates
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 
   // Update count whenever data changes

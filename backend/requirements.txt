@@ -25,3 +25,7 @@ reportlab
 
 pydantic-settings
 argon2-cffi
+
+# WebSockets for real-time updates
+websockets
+python-socketio[client]

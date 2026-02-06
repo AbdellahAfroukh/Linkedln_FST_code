@@ -17,6 +17,8 @@ import type { ReactionType } from "@/types";
 import { transformUrl } from "@/lib/url-utils";
 import { ImagePreviewDialog } from "@/components/image-preview-dialog";
 import { Trash2 } from "lucide-react";
+import { useWebSocketFeed } from "@/hooks/use-websocket-hooks";
+import { useEffect } from "react";
 
 const REACTIONS: { label: string; value: ReactionType }[] = [
   { label: "👍 Like", value: "like" },
@@ -37,11 +39,41 @@ export function FeedPage() {
     number | null
   >(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [posts, setPosts] = useState<any[]>([]);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["posts", "feed"],
     queryFn: () => postsApi.getFeed(),
   });
+
+  // Update local posts when data changes
+  useEffect(() => {
+    if (data?.posts) {
+      setPosts(data.posts);
+    }
+  }, [data?.posts]);
+
+  // WebSocket hook for feed updates
+  useWebSocketFeed(
+    (post) => {
+      // New post received
+      setPosts((prev) => [post, ...prev]);
+      toast.success("New post added to feed");
+    },
+    (comment) => {
+      // New comment received - update the post
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === comment.postId
+            ? {
+                ...p,
+                comments: [...(p.comments || []), comment],
+              }
+            : p,
+        ),
+      );
+    },
+  );
 
   const addCommentMutation = useMutation({
     mutationFn: ({ postId, content }: { postId: number; content: string }) =>
@@ -72,12 +104,18 @@ export function FeedPage() {
   const deleteCommentMutation = useMutation({
     mutationFn: (commentId: number) => postsApi.deleteComment(commentId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["posts", "feed"] });
+      // Update local state instead of refetching
+      setPosts((prev) =>
+        prev.map((p) => ({
+          ...p,
+          comments: p.comments?.filter((c: any) => c.id !== commentId),
+        })),
+      );
     },
     onError: () => toast.error("Failed to delete comment"),
   });
 
-  const posts = data?.posts ?? [];
+  const postsToDisplay = posts.length > 0 ? posts : (data?.posts ?? []);
 
   const getInitials = (fullName?: string) => {
     if (!fullName) return "U";
@@ -166,7 +204,7 @@ export function FeedPage() {
             <p className="text-sm text-muted-foreground">No posts to show.</p>
           )}
 
-          {posts.map((post) => {
+          {postsToDisplay.map((post) => {
             const userReaction = post.reactions.find(
               (r) => r.userId === user?.id,
             );

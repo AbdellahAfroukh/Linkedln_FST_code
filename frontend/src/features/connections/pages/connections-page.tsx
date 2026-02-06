@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import type { UserDetailResponse } from "@/types";
 import { ProfileTabsContent } from "../components/profile-tabs-content";
+import { useWebSocketConnections } from "@/hooks/use-websocket-hooks";
 
 export function ConnectionsPage() {
   const navigate = useNavigate();
@@ -39,43 +40,8 @@ export function ConnectionsPage() {
     null,
   );
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
-  const pollIntervalMs = 1000;
 
-  // Auto-refresh connections with polling
-  useEffect(() => {
-    // Refetch on visibility change
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        acceptedQuery.refetch();
-        incomingQuery.refetch();
-        outgoingQuery.refetch();
-      }
-    };
-
-    // Refetch on window focus
-    const handleFocus = () => {
-      acceptedQuery.refetch();
-      incomingQuery.refetch();
-      outgoingQuery.refetch();
-    };
-
-    // Set up polling interval
-    const interval = setInterval(() => {
-      acceptedQuery.refetch();
-      incomingQuery.refetch();
-      outgoingQuery.refetch();
-    }, pollIntervalMs);
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("focus", handleFocus);
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("focus", handleFocus);
-    };
-  }, []);
-
+  // Define queries first so they're available in callbacks
   const acceptedQuery = useQuery({
     queryKey: ["connections", "accepted"],
     queryFn: connectionsApi.listAccepted,
@@ -90,6 +56,55 @@ export function ConnectionsPage() {
     queryKey: ["connections", "outgoing"],
     queryFn: connectionsApi.listPendingOutgoing,
   });
+
+  // Memoize the message handler callback - use queryClient instead of query objects to avoid recreating on every render
+  const handleConnectionMessage = useCallback(
+    (data: any) => {
+      // Handle different connection events
+      if (data.type === "connection_request") {
+        // New connection request received
+        queryClient.invalidateQueries({
+          queryKey: ["connections", "incoming"],
+        });
+        toast.success(`New connection request from ${data.from_user_name}`);
+      } else if (data.type === "connection_accepted") {
+        // Your request was accepted
+        queryClient.invalidateQueries({
+          queryKey: ["connections", "accepted"],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["connections", "outgoing"],
+        });
+        toast.success(
+          `${data.accepted_by_user_name} accepted your connection request`,
+        );
+      } else if (data.type === "connection_rejected") {
+        // Your request was rejected
+        queryClient.invalidateQueries({
+          queryKey: ["connections", "outgoing"],
+        });
+        toast.info("Connection request was declined");
+      } else if (data.type === "connection_removed") {
+        // Connection was removed
+        queryClient.invalidateQueries({
+          queryKey: ["connections", "accepted"],
+        });
+        toast.info("A connection was removed");
+      }
+    },
+    [queryClient],
+  );
+
+  // Memoize the legacy callback
+  const handleConnectionAccepted = useCallback(
+    (userId: number) => {
+      queryClient.invalidateQueries({ queryKey: ["connections"] });
+    },
+    [queryClient],
+  );
+
+  // WebSocket hook for connection notifications
+  useWebSocketConnections(handleConnectionMessage, handleConnectionAccepted);
 
   const searchUsersQuery = useQuery({
     queryKey: ["users", "search", searchQuery],

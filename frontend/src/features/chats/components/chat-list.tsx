@@ -32,8 +32,11 @@ export function ChatList({ onSelectChat, selectedChat }: ChatListProps) {
       setIsInitialized(true);
     };
     loadInitial();
-    const interval = setInterval(loadChats, 1000); // Poll every 1 second for real-time unread updates
-    return () => clearInterval(interval);
+    // Removed polling - WebSocket handles real-time updates
+    // Let browser fetch on focus
+    const handleFocus = () => loadChats();
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
   const loadChats = async () => {

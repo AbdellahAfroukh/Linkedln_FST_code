@@ -7,6 +7,7 @@ from dependencies import get_db, get_current_user
 from services.chat_service import ChatService
 from services.malware_detection import detect_malware, get_file_type_category
 from services.file_utils import get_file_path_from_url
+from services.websocket_manager import manager
 from schemas.chat_schemas import MessageCreate, MessageResponse, ChatResponse, ChatDetailResponse
 from models.user import User
 
@@ -50,6 +51,24 @@ async def send_message(request: MessageCreate, db: Session = Depends(get_db), cu
         request.content,
         request.attachment,
     )
+    
+    # Get chat for WebSocket broadcasting
+    chat = ChatService.get_or_create_chat(db, current_user, request.receiverId)
+    
+    # Broadcast message via WebSocket
+    await manager.broadcast_to_users(
+        f"messages_{chat.id}",
+        [current_user.id, request.receiverId],
+        {
+            "type": "new_message",
+            "message_id": message.id,
+            "sender_id": message.senderId,
+            "content": message.content,
+            "attachment": message.attachment,
+            "timestamp": message.timestamp.isoformat() if message.timestamp else None,
+        },
+    )
+    
     return message
 
 @router.get("", response_model=List[ChatResponse])

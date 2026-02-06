@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Send, Loader2, Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { FileUpload } from "@/components/file-upload";
 import { ImagePreviewDialog } from "@/components/image-preview-dialog";
 import { transformUrl } from "@/lib/url-utils";
+import { useWebSocketChat } from "@/hooks/use-websocket-hooks";
 
 interface ChatThreadProps {
   chat: Chat | null;
@@ -32,7 +33,51 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const pollIntervalMs = 1000;
+
+  // Memoize the new message handler to prevent WebSocket reconnections
+  const handleNewMessage = useCallback(
+    (message: any) => {
+      // New message received via WebSocket
+      setMessages((prev) => {
+        // Check if message already exists to avoid duplicates
+        if (prev.some((m) => m.id === message.message_id)) {
+          return prev;
+        }
+        const newMsg = {
+          id: message.message_id,
+          chatId: chat?.id || 0,
+          senderId: message.sender_id,
+          content: message.content,
+          attachment: message.attachment,
+          timestamp: message.timestamp,
+          is_read: 1,
+          sender:
+            message.sender_id === currentUser?.id ? currentUser : undefined,
+        } as Message;
+
+        // Keep messages sorted by timestamp
+        const updated = [...prev, newMsg];
+        return updated.sort(
+          (a, b) =>
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+        );
+      });
+      setShouldAutoScroll(true);
+
+      // Invalidate chats query to update the chat list with the latest message
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+    },
+    [chat?.id, currentUser, queryClient],
+  );
+
+  // Memoize the typing handler
+  const handleTyping = useCallback((userId: number, isTyping: boolean) => {
+    // Typing indicator handler - can add UI later
+  }, []);
+
+  // WebSocket hook for real-time messages (only when chat is selected)
+  const { sendMessage: wsChatsendMessage, isConnected: wsIsConnected } =
+    useWebSocketChat(chat ? chat.id : 0, handleNewMessage, handleTyping);
 
   // Don't render if no current user
   if (!currentUser) {
@@ -50,25 +95,21 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
     setShouldAutoScroll(true); // Auto-scroll when switching chats
     loadMessages(true);
 
-    const interval = setInterval(() => {
-      loadMessages(false);
-    }, pollIntervalMs);
-
+    // Only reload on visibility change if the tab was hidden for a while
+    let wasHidden = false;
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
+      if (document.hidden) {
+        wasHidden = true;
+      } else if (wasHidden) {
+        // Only reload if we were hidden and now visible again
         loadMessages(false);
+        wasHidden = false;
       }
     };
 
-    const handleFocus = () => loadMessages(false);
-
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("focus", handleFocus);
-
     return () => {
-      clearInterval(interval);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("focus", handleFocus);
     };
   }, [chat?.id]);
 
@@ -102,7 +143,12 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
         setIsLoading(true);
       }
       const data = await chatsApi.getMessages(chat.id);
-      setMessages(data);
+      // Sort messages by timestamp to ensure chronological order
+      const sortedData = data.sort(
+        (a, b) =>
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+      );
+      setMessages(sortedData);
 
       // Check if there are any unread messages from the other user
       const hasUnread = data.some(
@@ -146,10 +192,14 @@ export function ChatThread({ chat, onChatUpdated }: ChatThreadProps) {
         attachmentUrl.trim() || undefined,
       );
 
+      // Message will be received via WebSocket, but add it locally for immediate UI update
       setMessages([...messages, newMessage]);
       setMessageInput("");
       setAttachmentUrl("");
       setShouldAutoScroll(true); // Auto-scroll when sending a message
+
+      // Invalidate chats query to update the chat list with the latest message
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
     } catch (error) {
       console.error("Failed to send message:", error);
       toast({

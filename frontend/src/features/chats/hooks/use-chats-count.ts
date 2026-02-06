@@ -17,9 +17,9 @@ export function useChatsCount() {
   const chatsQuery = useQuery({
     queryKey: ["chats"],
     queryFn: chatsApi.list,
-    refetchInterval: 1000, // Poll every 1 second for real-time updates
-    staleTime: 0, // Always consider data stale, force fresh requests
-    gcTime: 0, // Don't cache the data
+    // Removed polling - WebSocket handles real-time updates
+    staleTime: 5 * 60 * 1000, // 5 minutes - keep cached data
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 
   // Count chats with unread messages whenever data changes
