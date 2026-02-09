@@ -20,6 +20,17 @@ ALLOWED_IMAGES = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}
 ALLOWED_DOCUMENTS = {".pdf", ".doc", ".docx", ".txt", ".xls", ".xlsx"}
 ALLOWED_EXTENSIONS = ALLOWED_IMAGES | ALLOWED_DOCUMENTS
 
+def _validate_filename(filename: str) -> str:
+    """Validate filename to prevent path traversal attacks"""
+    # Extract only the filename, remove any path components
+    filename = Path(filename).name
+    
+    # Reject if contains dangerous characters
+    if '..' in filename or '/' in filename or '\\' in filename or filename == '':
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    
+    return filename
+
 @router.post("/image")
 async def upload_image(
     file: UploadFile = File(...),
@@ -61,8 +72,12 @@ async def upload_image(
     except HTTPException:
         raise
     except Exception as e:
-        # Log error but don't block upload if detection fails
-        print(f"Malware detection error: {e}")
+        # Fail-closed: delete file and reject upload if detection fails
+        file_path.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=500,
+            detail="File security validation failed"
+        )
     
     # Return URL
     return {
@@ -111,8 +126,12 @@ async def upload_document(
     except HTTPException:
         raise
     except Exception as e:
-        # Log error but don't block upload if detection fails
-        print(f"Malware detection error: {e}")
+        # Fail-closed: delete file and reject upload if detection fails
+        file_path.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=500,
+            detail="File security validation failed"
+        )
     
     # Return URL
     return {

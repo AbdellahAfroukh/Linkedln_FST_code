@@ -6,26 +6,26 @@ from models.post import ReactionType
 
 class PostCreate(BaseModel):
     """Schema for creating a new post"""
-    content: str = Field(..., min_length=1, description="Post content")
-    attachement: Optional[str] = Field(None, description="URL or path to attachment")
+    content: str = Field(..., min_length=1, max_length=5000, description="Post content (max 5000 characters)")
+    attachement: Optional[str] = Field(None, max_length=500, description="URL or path to attachment")
     isPublic: bool = Field(True, description="Whether the post is public")
 
 
 class PostUpdate(BaseModel):
     """Schema for updating a post"""
-    content: Optional[str] = Field(None, min_length=1)
-    attachement: Optional[str] = None
+    content: Optional[str] = Field(None, min_length=1, max_length=5000, description="Post content (max 5000 characters)")
+    attachement: Optional[str] = Field(None, max_length=500)
     isPublic: Optional[bool] = None
 
 
 class CommentCreate(BaseModel):
     """Schema for creating a comment"""
-    content: str = Field(..., min_length=1, description="Comment content")
+    content: str = Field(..., min_length=1, max_length=2000, description="Comment content (max 2000 characters)")
 
 
 class CommentUpdate(BaseModel):
     """Schema for updating a comment"""
-    content: str = Field(..., min_length=1, description="Updated comment content")
+    content: str = Field(..., min_length=1, max_length=2000, description="Updated comment content (max 2000 characters)")
 
 
 class ReactionCreate(BaseModel):
@@ -67,6 +67,18 @@ class PublicationInfo(BaseModel):
         from_attributes = True
 
 
+class ScopusPublicationInfo(BaseModel):
+    """Scopus publication information for posts"""
+    id: int
+    title: str
+    publicationDate: Optional[date] = None
+    citationCount: int
+    scopusUrl: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class CommentResponse(BaseModel):
     """Response schema for a comment"""
     id: int
@@ -90,8 +102,10 @@ class PostResponse(BaseModel):
     isPublic: bool
     userId: int
     publicationId: Optional[int] = None
+    scopusPublicationId: Optional[int] = None
     user: UserBasicInfo
     publication: Optional[PublicationInfo] = None
+    scopusPublication: Optional[ScopusPublicationInfo] = None
     comments: List[CommentResponse] = []
     reactions: List[ReactionResponse] = []
     

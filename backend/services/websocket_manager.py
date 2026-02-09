@@ -26,7 +26,7 @@ class ConnectionManager:
 
     async def connect(self, websocket: WebSocket, channel: str, user_id: int):
         """Register a new WebSocket connection"""
-        await websocket.accept()
+        # Note: websocket should already be accepted by authenticate_websocket
         if channel not in self.active_connections:
             self.active_connections[channel] = {}
         self.active_connections[channel][user_id] = websocket

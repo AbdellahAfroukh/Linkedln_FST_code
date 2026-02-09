@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryProvider } from "./components/providers/query-provider";
 import { ToastProvider } from "./components/providers/toast-provider";
 import { ChatProvider } from "./features/chats/context/chat-context";
+import { ErrorBoundary } from "./components/error-boundary";
 import {
   ProtectedRoute,
   RoleProtectedRoute,
@@ -42,66 +43,75 @@ import { ProjetsPage } from "./features/projets/pages/projets-page";
 // Google Scholar
 import { GoogleScholarPage } from "./features/google-scholar/pages/google-scholar-page";
 
+// Scopus
+import { ScopusPage } from "./features/scopus/pages/scopus-page";
+
 // Profile
 import { ProfileSettingsPage } from "./features/profile/pages/profile-settings-page";
 import { UserProfilePage } from "./features/users/pages/user-profile-page";
 
 function App() {
   return (
-    <QueryProvider>
-      <ChatProvider>
-        <ToastProvider />
-        <BrowserRouter>
-          <Routes>
-            {/* Public routes */}
-            <Route element={<AuthLayout />}>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-            </Route>
-
-            {/* Protected routes */}
-            <Route element={<ProtectedRoute />}>
-              <Route
-                path="/complete-profile"
-                element={<CompleteProfilePage />}
-              />
-
-              <Route element={<AppLayout />}>
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/posts" element={<PostsFeedPage />} />
-                <Route path="/feed" element={<FeedPage />} />
-                <Route path="/people" element={<PeoplePage />} />
-                <Route path="/cv" element={<CVPage />} />
-                <Route path="/connections" element={<ConnectionsPage />} />
-                <Route path="/chats" element={<ChatsPage />} />
-                <Route path="/projets" element={<ProjetsPage />} />
-                <Route path="/google-scholar" element={<GoogleScholarPage />} />
-                <Route
-                  path="/profile/settings"
-                  element={<ProfileSettingsPage />}
-                />
-                <Route path="/users/:userId" element={<UserProfilePage />} />
-
-                {/* Admin routes */}
-                <Route
-                  element={<RoleProtectedRoute allowedRoles={["admin"]} />}
-                >
-                  <Route path="/admin" element={<AdminDashboardPage />} />
-                </Route>
-
-                <Route
-                  path="/"
-                  element={<Navigate to="/dashboard" replace />}
-                />
+    <ErrorBoundary>
+      <QueryProvider>
+        <ChatProvider>
+          <ToastProvider />
+          <BrowserRouter>
+            <Routes>
+              {/* Public routes */}
+              <Route element={<AuthLayout />}>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
               </Route>
-            </Route>
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </BrowserRouter>
-      </ChatProvider>
-    </QueryProvider>
+              {/* Protected routes */}
+              <Route element={<ProtectedRoute />}>
+                <Route
+                  path="/complete-profile"
+                  element={<CompleteProfilePage />}
+                />
+
+                <Route element={<AppLayout />}>
+                  <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route path="/posts" element={<PostsFeedPage />} />
+                  <Route path="/feed" element={<FeedPage />} />
+                  <Route path="/people" element={<PeoplePage />} />
+                  <Route path="/cv" element={<CVPage />} />
+                  <Route path="/connections" element={<ConnectionsPage />} />
+                  <Route path="/chats" element={<ChatsPage />} />
+                  <Route path="/projets" element={<ProjetsPage />} />
+                  <Route
+                    path="/google-scholar"
+                    element={<GoogleScholarPage />}
+                  />
+                  <Route path="/scopus" element={<ScopusPage />} />
+                  <Route
+                    path="/profile/settings"
+                    element={<ProfileSettingsPage />}
+                  />
+                  <Route path="/users/:userId" element={<UserProfilePage />} />
+
+                  {/* Admin routes */}
+                  <Route
+                    element={<RoleProtectedRoute allowedRoles={["admin"]} />}
+                  >
+                    <Route path="/admin" element={<AdminDashboardPage />} />
+                  </Route>
+
+                  <Route
+                    path="/"
+                    element={<Navigate to="/dashboard" replace />}
+                  />
+                </Route>
+              </Route>
+
+              {/* Fallback */}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </ChatProvider>
+      </QueryProvider>
+    </ErrorBoundary>
   );
 }
 

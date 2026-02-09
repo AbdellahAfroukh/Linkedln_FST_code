@@ -466,11 +466,9 @@ function ContactSection() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
+    email: "",
     telephone: "",
-    adressePostale: "",
-    siteWeb: "",
-    LinkedIn: "",
-    GitHub: "",
+    adresse: "",
   });
 
   const { data: contacts = [] } = useQuery({
@@ -486,11 +484,9 @@ function ContactSection() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cv-contacts"] });
       setFormData({
+        email: "",
         telephone: "",
-        adressePostale: "",
-        siteWeb: "",
-        LinkedIn: "",
-        GitHub: "",
+        adresse: "",
       });
       setShowForm(false);
       toast.success(t("cv.itemAdded"));
@@ -504,11 +500,9 @@ function ContactSection() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cv-contacts"] });
       setFormData({
+        email: "",
         telephone: "",
-        adressePostale: "",
-        siteWeb: "",
-        LinkedIn: "",
-        GitHub: "",
+        adresse: "",
       });
       setEditingId(null);
       setShowForm(false);
@@ -527,13 +521,7 @@ function ContactSection() {
   });
 
   const handleAddContact = () => {
-    if (
-      !formData.telephone &&
-      !formData.adressePostale &&
-      !formData.siteWeb &&
-      !formData.LinkedIn &&
-      !formData.GitHub
-    ) {
+    if (!formData.email) {
       toast.error(t("cv.emailIsRequired"));
       return;
     }
@@ -568,6 +556,14 @@ function ContactSection() {
         {showForm && (
           <div className="border-l-4 border-blue-500 pl-4 space-y-3 bg-blue-50 p-4 rounded">
             <Input
+              placeholder="Email"
+              type="email"
+              value={formData.email}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
+            />
+            <Input
               placeholder={t("cv.phone")}
               value={formData.telephone}
               onChange={(e) =>
@@ -576,28 +572,7 @@ function ContactSection() {
             />
             <Input
               placeholder={t("cv.address")}
-              value={formData.adressePostale}
-              onChange={(e) =>
-                setFormData({ ...formData, adressePostale: e.target.value })
-              }
-            />
-            <Input
-              placeholder="Website"
-              value={formData.siteWeb}
-              onChange={(e) =>
-                setFormData({ ...formData, siteWeb: e.target.value })
-              }
-            />
-            <Input
-              placeholder="LinkedIn"
-              value={formData.LinkedIn}
-              onChange={(e) =>
-                setFormData({ ...formData, LinkedIn: e.target.value })
-              }
-            />
-            <Input
-              placeholder="GitHub"
-              value={formData.GitHub}
+              value={formData.adresse}
               onChange={(e) =>
                 setFormData({ ...formData, GitHub: e.target.value })
               }
@@ -619,11 +594,9 @@ function ContactSection() {
                   setShowForm(false);
                   setEditingId(null);
                   setFormData({
+                    email: "",
                     telephone: "",
-                    adressePostale: "",
-                    siteWeb: "",
-                    LinkedIn: "",
-                    GitHub: "",
+                    adresse: "",
                   });
                 }}
                 size="sm"
@@ -642,29 +615,19 @@ function ContactSection() {
                 className="border rounded-lg p-4 hover:bg-gray-50 transition flex justify-between items-start"
               >
                 <div className="flex-1">
+                  {contact.email && (
+                    <p className="text-sm text-muted-foreground">
+                      Email: {contact.email}
+                    </p>
+                  )}
                   {contact.telephone && (
                     <p className="text-sm text-muted-foreground">
                       {t("cv.phone")}: {contact.telephone}
                     </p>
                   )}
-                  {contact.adressePostale && (
+                  {contact.adresse && (
                     <p className="text-sm text-muted-foreground">
-                      {t("cv.address")}: {contact.adressePostale}
-                    </p>
-                  )}
-                  {contact.siteWeb && (
-                    <p className="text-sm text-muted-foreground">
-                      Website: {contact.siteWeb}
-                    </p>
-                  )}
-                  {contact.LinkedIn && (
-                    <p className="text-sm text-muted-foreground">
-                      LinkedIn: {contact.LinkedIn}
-                    </p>
-                  )}
-                  {contact.GitHub && (
-                    <p className="text-sm text-muted-foreground">
-                      GitHub: {contact.GitHub}
+                      {t("cv.address")}: {contact.adresse}
                     </p>
                   )}
                 </div>
@@ -707,10 +670,9 @@ function FormationsSection() {
   const [formData, setFormData] = useState({
     titre: "",
     etablissement: "",
-    anneeDebut: "" as any,
-    anneeFin: "" as any,
-    description: "",
-    isHigherEducation: true,
+    dateDebut: "",
+    dateFin: "",
+    enCours: false,
   });
 
   const { data: formations = [] } = useQuery({
@@ -752,10 +714,9 @@ function FormationsSection() {
       setFormData({
         titre: "",
         etablissement: "",
-        anneeDebut: "" as any,
-        anneeFin: "" as any,
-        description: "",
-        isHigherEducation: true,
+        dateDebut: "",
+        dateFin: "",
+        enCours: false,
       });
       setEditingId(null);
       setShowForm(false);
@@ -774,19 +735,17 @@ function FormationsSection() {
   });
 
   const handleAddFormation = () => {
-    if (!formData.titre || !formData.anneeDebut) {
+    if (!formData.titre || !formData.dateDebut) {
       toast.error(t("cv.diplomaAndStartDateRequired"));
       return;
     }
-    const data: FormationCreate = {
-      titre: formData.titre,
+    // Transform frontend data to match backend schema
+    const data: any = {
+      diplome: formData.titre,
       etablissement: formData.etablissement,
-      anneeDebut: parseInt(formData.anneeDebut as any) || 0,
-      anneeFin: formData.anneeFin
-        ? parseInt(formData.anneeFin as any)
-        : undefined,
-      description: formData.description,
-      isHigherEducation: formData.isHigherEducation,
+      dateDebut: formData.dateDebut,
+      dateFin: formData.dateFin || null,
+      enCours: formData.enCours || false,
     };
     if (editingId) {
       updateFormationMutation.mutate({ id: editingId, data });
@@ -796,7 +755,14 @@ function FormationsSection() {
   };
 
   const handleEdit = (formation: any) => {
-    setFormData(formation);
+    // Transform backend data to frontend form format
+    setFormData({
+      titre: formation.diplome || "",
+      etablissement: formation.etablissement || "",
+      dateDebut: formation.dateDebut || "",
+      dateFin: formation.dateFin || "",
+      enCours: formation.enCours || false,
+    });
     setEditingId(formation.id);
     setShowForm(true);
   };
@@ -833,42 +799,33 @@ function FormationsSection() {
               }
             />
             <Input
-              placeholder="Start Year"
-              type="number"
-              value={formData.anneeDebut}
+              type="date"
+              placeholder="Start Date"
+              value={formData.dateDebut}
               onChange={(e) =>
-                setFormData({ ...formData, anneeDebut: e.target.value as any })
+                setFormData({ ...formData, dateDebut: e.target.value })
               }
             />
             <Input
-              placeholder="End Year"
-              type="number"
-              value={formData.anneeFin}
+              type="date"
+              placeholder="End Date (optional)"
+              value={formData.dateFin}
               onChange={(e) =>
-                setFormData({ ...formData, anneeFin: e.target.value as any })
+                setFormData({ ...formData, dateFin: e.target.value })
               }
-            />
-            <textarea
-              className="w-full border rounded p-2 text-sm"
-              placeholder={t("cv.description")}
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              rows={3}
             />
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
-                checked={formData.isHigherEducation}
+                checked={formData.enCours}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    isHigherEducation: e.target.checked,
+                    enCours: e.target.checked,
                   })
                 }
               />
-              <span>Higher Education</span>
+              <span>Currently Studying</span>
             </label>
             <div className="flex gap-2">
               <Button
@@ -891,8 +848,7 @@ function FormationsSection() {
                     etablissement: "",
                     anneeDebut: "" as any,
                     anneeFin: "" as any,
-                    description: "",
-                    isHigherEducation: true,
+                    enCours: false,
                   });
                 }}
                 size="sm"
@@ -911,18 +867,17 @@ function FormationsSection() {
                 className="border-l-4 border-green-500 rounded-lg p-4 bg-green-50 flex justify-between items-start"
               >
                 <div className="flex-1">
-                  <p className="font-semibold text-lg">{formation.titre}</p>
+                  <p className="font-semibold text-lg">{formation.diplome}</p>
                   {formation.etablissement && (
                     <p className="text-sm text-muted-foreground">
                       {formation.etablissement}
                     </p>
                   )}
-                  {formation.description && (
-                    <p className="text-sm mt-1">{formation.description}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formation.anneeDebut} -{" "}
-                    {formation.anneeFin || t("cv.present")}
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {new Date(formation.dateDebut).toLocaleDateString()} -{" "}
+                    {formation.dateFin
+                      ? new Date(formation.dateFin).toLocaleDateString()
+                      : t("cv.present")}
                   </p>
                 </div>
                 <div className="flex gap-2">

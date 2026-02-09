@@ -15,19 +15,26 @@ class PostService:
     @staticmethod
     def create_post(db: Session, user: User, data) -> Post:
         """Create a new post"""
-        post = Post(
-            content=data.content,
-            attachement=data.attachement,
-            isPublic=data.isPublic,
-            userId=user.id,
-            timestamp=datetime.now(timezone.utc)
-        )
-        
-        db.add(post)
-        db.commit()
-        db.refresh(post)
-        
-        return post
+        try:
+            post = Post(
+                content=data.content,
+                attachement=data.attachement,
+                isPublic=data.isPublic,
+                userId=user.id,
+                timestamp=datetime.now(timezone.utc)
+            )
+            
+            db.add(post)
+            db.commit()
+            db.refresh(post)
+            
+            return post
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create post. Please try again."
+            )
     
     @staticmethod
     def get_post_by_id(db: Session, post_id: int, current_user: User) -> Post:
@@ -87,35 +94,53 @@ class PostService:
     @staticmethod
     def delete_post(db: Session, post_id: int, user: User):
         """Delete a post (only by the owner)"""
-        post = db.query(Post).filter(Post.id == post_id).first()
-        
-        if not post:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Post not found"
-            )
-        
-        if post.userId != user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You can only delete your own posts"
-            )
-        
-        # If this post is linked to a publication, unpost it
-        if post.publicationId:
-            publication = db.query(Publication).filter(
-                Publication.id == post.publicationId
-            ).first()
-            if publication:
-                publication.isPosted = False
-        
-        if post.attachement:
-            delete_file_from_url(post.attachement)
+        try:
+            post = db.query(Post).filter(Post.id == post_id).first()
+            
+            if not post:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Post not found"
+                )
+            
+            if post.userId != user.id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You can only delete your own posts"
+                )
+            
+            # If this post is linked to a Google Scholar publication, unpost it
+            if post.publicationId:
+                publication = db.query(Publication).filter(
+                    Publication.id == post.publicationId
+                ).first()
+                if publication:
+                    publication.isPosted = False
+            
+            # If this post is linked to a Scopus publication, unpost it
+            if post.scopusPublicationId:
+                from models.scopus import ScopusPublication
+                scopus_publication = db.query(ScopusPublication).filter(
+                    ScopusPublication.id == post.scopusPublicationId
+                ).first()
+                if scopus_publication:
+                    scopus_publication.isPosted = False
+            
+            if post.attachement:
+                delete_file_from_url(post.attachement)
 
-        db.delete(post)
-        db.commit()
-        
-        return {"message": "Post deleted successfully"}
+            db.delete(post)
+            db.commit()
+            
+            return {"message": "Post deleted successfully"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete post. Please try again."
+            )
     
     @staticmethod
     def get_user_posts(db: Session, user_id: int, current_user: User, skip: int = 0, limit: int = 50):

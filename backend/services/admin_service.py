@@ -521,6 +521,25 @@ class AdminService:
     def delete_post(db: Session, post_id: int) -> dict:
         """Delete a post (admin moderation)"""
         post = AdminService.get_post_by_id(db, post_id)
+        
+        # If this post is linked to a Google Scholar publication, unpost it
+        if post.publicationId:
+            from models.google_scholar import Publication
+            publication = db.query(Publication).filter(
+                Publication.id == post.publicationId
+            ).first()
+            if publication:
+                publication.isPosted = False
+        
+        # If this post is linked to a Scopus publication, unpost it
+        if post.scopusPublicationId:
+            from models.scopus import ScopusPublication
+            scopus_publication = db.query(ScopusPublication).filter(
+                ScopusPublication.id == post.scopusPublicationId
+            ).first()
+            if scopus_publication:
+                scopus_publication.isPosted = False
+        
         if post.attachement:
             delete_file_from_url(post.attachement)
         db.delete(post)

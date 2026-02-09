@@ -18,13 +18,24 @@ router = APIRouter(prefix="/ws", tags=["WebSocket"])
 
 async def authenticate_websocket(websocket: WebSocket, token: str):
     """Authenticate WebSocket connection and return user_id"""
+    # Accept the websocket connection first
+    await websocket.accept()
+    
     db = SessionLocal()
     try:
         current_user = get_current_user_websocket(token, db)
         if not current_user:
-            await websocket.close(code=4001, reason="Unauthorized")
+            logger.warning(f"WebSocket authentication failed - invalid token")
+            await websocket.close(code=4001, reason="Unauthorized - invalid token")
             return None
         return current_user.id
+    except Exception as e:
+        logger.error(f"WebSocket authentication error: {type(e).__name__}: {e}")
+        try:
+            await websocket.close(code=4001, reason="Unauthorized")
+        except:
+            pass  # Connection may already be closed
+        return None
     finally:
         db.close()
 
@@ -198,32 +209,40 @@ async def websocket_notifications(
     
     Usage: ws://localhost:8000/ws/notifications?token={access_token}
     """
-    user_id = await authenticate_websocket(websocket, token)
-    if user_id is None:
-        return
-
-    await manager.connect(websocket, "notifications", user_id)
-    logger.info(f"User {user_id} connected to notifications")
-
+    user_id = None
     try:
-        while True:
-            data = await websocket_receive_with_timeout(websocket)
-            if data is None:
-                continue
-            
-            try:
-                msg = json.loads(data)
-                if msg.get("type") == "ping":
-                    await websocket.send_text(json.dumps({"type": "pong"}))
-            except json.JSONDecodeError:
-                continue
+        user_id = await authenticate_websocket(websocket, token)
+        if user_id is None:
+            return
 
-    except WebSocketDisconnect:
-        logger.info(f"User {user_id} disconnected from notifications")
-    except Exception as e:
-        logger.error(f"Error in notifications WebSocket: {e}")
+        await manager.connect(websocket, "notifications", user_id)
+        logger.info(f"User {user_id} connected to notifications")
+
+        try:
+            while True:
+                data = await websocket_receive_with_timeout(websocket)
+                
+                if data is None:
+                    # Timeout - no data received, but connection is still alive
+                    continue
+                
+                try:
+                    msg = json.loads(data)
+                    if msg.get("type") == "ping":
+                        await websocket.send_text(json.dumps({"type": "pong"}))
+                except json.JSONDecodeError:
+                    continue
+
+        except WebSocketDisconnect:
+            logger.info(f"User {user_id} disconnected from notifications")
+        except asyncio.CancelledError:
+            logger.info(f"User {user_id} notifications connection cancelled")
+            raise
+        except Exception as e:
+            logger.error(f"Error in notifications WebSocket for user {user_id}: {type(e).__name__}: {e}", exc_info=True)
     finally:
-        manager.disconnect("notifications", user_id)
+        if user_id is not None:
+            manager.disconnect("notifications", user_id)
 
 
 
@@ -238,32 +257,44 @@ async def websocket_feed(
     
     Usage: ws://localhost:8000/ws/feed?token={access_token}
     """
-    user_id = await authenticate_websocket(websocket, token)
-    if user_id is None:
-        return
-
-    await manager.connect(websocket, "feed", user_id)
-    logger.info(f"User {user_id} connected to feed")
-
+    user_id = None
     try:
-        while True:
-            data = await websocket_receive_with_timeout(websocket)
-            if data is None:
-                continue
-            
-            try:
-                msg = json.loads(data)
-                if msg.get("type") == "ping":
-                    await websocket.send_text(json.dumps({"type": "pong"}))
-            except json.JSONDecodeError:
-                continue
+        logger.info(f"[FEED] Step 1: Starting authentication")
+        user_id = await authenticate_websocket(websocket, token)
+        logger.info(f"[FEED] Step 2: Authentication result: user_id={user_id}")
+        if user_id is None:
+            logger.info(f"[FEED] Step 3: Authentication failed, returning")
+            return
 
-    except WebSocketDisconnect:
-        logger.info(f"User {user_id} disconnected from feed")
-    except Exception as e:
-        logger.error(f"Error in feed WebSocket: {e}")
+        logger.info(f"[FEED] Step 4: Calling manager.connect for user {user_id}")
+        await manager.connect(websocket, "feed", user_id)
+        logger.info(f"[FEED] Step 5: User {user_id} connected to feed, entering loop")
+
+        try:
+            while True:
+                data = await websocket_receive_with_timeout(websocket)
+                
+                if data is None:
+                    # Timeout - no data received, but connection is still alive
+                    continue
+                
+                try:
+                    msg = json.loads(data)
+                    if msg.get("type") == "ping":
+                        await websocket.send_text(json.dumps({"type": "pong"}))
+                except json.JSONDecodeError:
+                    continue
+
+        except WebSocketDisconnect:
+            logger.info(f"User {user_id} disconnected from feed")
+        except asyncio.CancelledError:
+            logger.info(f"User {user_id} feed connection cancelled")
+            raise
+        except Exception as e:
+            logger.error(f"Error in feed WebSocket for user {user_id}: {type(e).__name__}: {e}", exc_info=True)
     finally:
-        manager.disconnect("feed", user_id)
+        if user_id is not None:
+            manager.disconnect("feed", user_id)
 
 
 
@@ -278,52 +309,60 @@ async def websocket_online(
     
     Usage: ws://localhost:8000/ws/online?token={access_token}
     """
-    user_id = await authenticate_websocket(websocket, token)
-    if user_id is None:
-        return
-
-    # Get user info for online broadcast
-    db = SessionLocal()
+    user_id = None
     try:
-        current_user = get_current_user_websocket(token, db)
-        full_name = current_user.fullName if current_user else "Unknown"
-    finally:
-        db.close()
+        user_id = await authenticate_websocket(websocket, token)
+        if user_id is None:
+            return
 
-    await manager.connect(websocket, "online", user_id)
-    logger.info(f"User {user_id} came online")
+        # Get user info for online broadcast
+        db = SessionLocal()
+        try:
+            current_user = get_current_user_websocket(token, db)
+            full_name = current_user.fullName if current_user else "Unknown"
+        finally:
+            db.close()
 
-    # Notify others that user came online
-    await manager.broadcast_to_channel(
-        "online",
-        {
-            "type": "user_online",
-            "user_id": user_id,
-            "full_name": full_name,
-        },
-    )
+        await manager.connect(websocket, "online", user_id)
+        logger.info(f"User {user_id} came online")
 
-    try:
-        while True:
-            data = await websocket_receive_with_timeout(websocket)
-            if data is None:
-                continue
-            
-            try:
-                msg = json.loads(data)
-                if msg.get("type") == "ping":
-                    await websocket.send_text(json.dumps({"type": "pong"}))
-            except json.JSONDecodeError:
-                continue
-
-    except WebSocketDisconnect:
-        logger.info(f"User {user_id} went offline")
-    except Exception as e:
-        logger.error(f"Error in online WebSocket: {e}")
-    finally:
-        manager.disconnect("online", user_id)
-        # Notify others that user went offline
+        # Notify others that user came online
         await manager.broadcast_to_channel(
-            "online", {"type": "user_offline", "user_id": user_id}
+            "online",
+            {
+                "type": "user_online",
+                "user_id": user_id,
+                "full_name": full_name,
+            },
         )
+
+        try:
+            while True:
+                data = await websocket_receive_with_timeout(websocket)
+                
+                if data is None:
+                    # Timeout - no data received, but connection is still alive
+                    continue
+                
+                try:
+                    msg = json.loads(data)
+                    if msg.get("type") == "ping":
+                        await websocket.send_text(json.dumps({"type": "pong"}))
+                except json.JSONDecodeError:
+                    continue
+
+        except WebSocketDisconnect:
+            logger.info(f"User {user_id} went offline")
+        except asyncio.CancelledError:
+            logger.info(f"User {user_id} online connection cancelled")
+            raise
+        except Exception as e:
+            logger.error(f"Error in online WebSocket for user {user_id}: {type(e).__name__}: {e}", exc_info=True)
+    finally:
+        if user_id is not None:
+            manager.disconnect("online", user_id)
+            # Notify others that user went offline
+            await manager.broadcast_to_channel(
+                "online", {"type": "user_offline", "user_id": user_id}
+            )
 

@@ -74,10 +74,6 @@ export function ProfileTabsContent({
       // Extract the actual error message from the API response
       let errorMessage = "Unable to download CV.";
 
-      console.error("CV Download Error:", error); // Debug log
-      console.error("Error Response:", error?.response); // Debug response
-      console.error("Error Response Data:", error?.response?.data); // Debug response data
-
       // Check for FastAPI error response with detail field
       if (error?.response?.data) {
         const data = error.response.data;

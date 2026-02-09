@@ -16,7 +16,11 @@ class Settings(BaseSettings):
     OTP_ISSUER: str = "AcademicPlatform"
     
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:5713", "http://localhost:8000"]
+    CORS_ORIGINS: List[str] = ["http://localhost:5713", "http://localhost:8000", "http://localhost:5173"]
+    
+    # Scopus API
+    SCOPUS_API_KEY: str = "01c3e1213a3b51108e1408c74d241015"
+    SCOPUS_API_BASE_URL: str = "https://api.elsevier.com/content"
     
     # Application
     APP_NAME: str = "Academic Platform API"

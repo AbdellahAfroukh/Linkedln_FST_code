@@ -67,6 +67,11 @@ export function AppLayout() {
       icon: GraduationCap,
       label: t("nav.googleScholar"),
     },
+    {
+      to: "/scopus",
+      icon: GraduationCap,
+      label: t("nav.scopus"),
+    },
   ];
 
   if (user?.user_type === "admin") {

@@ -64,13 +64,8 @@ export function useWebSocket(
         setIsConnected(true);
         reconnectAttempts.current = 0;
         
-        // Send immediate ping to keep connection alive
-        if (ws.current?.readyState === WebSocket.OPEN) {
-          console.log(`[WS-${channel}] Sending initial ping`);
-          ws.current.send(JSON.stringify({ type: 'ping' }));
-        }
-        
         // Start sending ping messages every 30 seconds to keep connection alive
+        // First ping will be sent after 30 seconds, giving backend time to fully initialize
         pingInterval.current = setInterval(() => {
           if (ws.current?.readyState === WebSocket.OPEN) {
             console.log(`[WS-${channel}] Sending periodic ping`);

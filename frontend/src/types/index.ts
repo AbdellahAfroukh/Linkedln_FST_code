@@ -430,6 +430,14 @@ export interface PublicationInfo {
   googleScholarUrl?: string;
 }
 
+export interface ScopusPublicationInfo {
+  id: number;
+  title: string;
+  publicationDate?: string;
+  citationCount: number;
+  scopusUrl?: string;
+}
+
 export interface Post {
   id: number;
   content: string;
@@ -438,8 +446,10 @@ export interface Post {
   isPublic: boolean;
   userId: number;
   publicationId?: number;
+  scopusPublicationId?: number;
   user: UserBasicInfo;
   publication?: PublicationInfo;
+  scopusPublication?: ScopusPublicationInfo;
   comments: Comment[];
   reactions: Reaction[];
 }

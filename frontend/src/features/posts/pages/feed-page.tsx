@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,6 @@ import { transformUrl } from "@/lib/url-utils";
 import { ImagePreviewDialog } from "@/components/image-preview-dialog";
 import { Trash2 } from "lucide-react";
 import { useWebSocketFeed } from "@/hooks/use-websocket-hooks";
-import { useEffect } from "react";
 
 const REACTIONS: { label: string; value: ReactionType }[] = [
   { label: "👍 Like", value: "like" },
@@ -55,27 +54,32 @@ export function FeedPage() {
     }
   }, [data?.posts]);
 
-  // WebSocket hook for feed updates
-  useWebSocketFeed(
-    (post) => {
+  // WebSocket callbacks - wrapped in useCallback to prevent reconnections
+  const handleNewPost = useCallback(
+    (post: any) => {
       // New post received
       setPosts((prev) => [post, ...prev]);
       toast.success(t("posts.newPostAdded"));
     },
-    (comment) => {
-      // New comment received - update the post
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === comment.postId
-            ? {
-                ...p,
-                comments: [...(p.comments || []), comment],
-              }
-            : p,
-        ),
-      );
-    },
+    [t],
   );
+
+  const handleNewComment = useCallback((comment: any) => {
+    // New comment received - update the post
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === comment.postId
+          ? {
+              ...p,
+              comments: [...(p.comments || []), comment],
+            }
+          : p,
+      ),
+    );
+  }, []);
+
+  // WebSocket hook for feed updates
+  useWebSocketFeed(handleNewPost, handleNewComment);
 
   const addCommentMutation = useMutation({
     mutationFn: ({ postId, content }: { postId: number; content: string }) =>

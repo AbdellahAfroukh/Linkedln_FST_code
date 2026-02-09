@@ -93,7 +93,7 @@ def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="Invalid credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -220,17 +220,19 @@ def verify_2fa(otp_data: OTPVerify, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found"
+            detail="Invalid credentials"
         )
     
     if not user.otp_configured or not user.otp_secret:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="2FA not configured for this user"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials"
         )
     
-    # Verify OTP
-    if not AuthService.verify_otp(user.otp_secret, otp_data.token):
+    # Decrypt and verify OTP
+    from services.authentification import AuthService as Auth
+    decrypted_secret = Auth._decrypt_otp_secret(user.otp_secret)
+    if not AuthService.verify_otp(decrypted_secret, otp_data.token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid OTP token"

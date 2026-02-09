@@ -25,6 +25,7 @@ class Post(Base):
     attachement = Column(String, nullable=True) 
     isPublic = Column(Boolean, default=True)
     publicationId = Column(Integer, ForeignKey("publications.id"), nullable=True)
+    scopusPublicationId = Column(Integer, ForeignKey("scopus_publications.id"), nullable=True)
 
     # Relationships
     userId = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -33,6 +34,7 @@ class Post(Base):
     comments = relationship("Comment", back_populates="post", cascade="all, delete-orphan")
     reactions = relationship("Reaction", back_populates="post", cascade="all, delete-orphan")
     publication = relationship("Publication", foreign_keys=[publicationId])
+    scopusPublication = relationship("ScopusPublication", foreign_keys=[scopusPublicationId])
 
 
 class Comment(Base):

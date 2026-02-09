@@ -9,13 +9,30 @@ import base64
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from models.user import User, UserType
+from cryptography.fernet import Fernet
+import secrets
 
 from config import settings
 
 pwd_context = CryptContext(schemes=["argon2", "bcrypt_sha256", "bcrypt"], deprecated="auto")
 
+# Derive encryption key from SECRET_KEY for OTP secrets
+# In production, use a separate encryption key from environment
+_encryption_key = base64.urlsafe_b64encode(settings.SECRET_KEY.encode()[:32].ljust(32, b'\0'))
+_cipher_suite = Fernet(_encryption_key)
+
 
 class AuthService:
+    
+    @staticmethod
+    def _encrypt_otp_secret(secret: str) -> str:
+        """Encrypt OTP secret before storage"""
+        return _cipher_suite.encrypt(secret.encode()).decode()
+    
+    @staticmethod
+    def _decrypt_otp_secret(encrypted_secret: str) -> str:
+        """Decrypt OTP secret for use"""
+        return _cipher_suite.decrypt(encrypted_secret.encode()).decode()
     
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -23,14 +40,35 @@ class AuthService:
         try:
             return pwd_context.verify(plain_password, hashed_password)
         except ValueError as e:
+            # Log detailed error for debugging - this is a hash algorithm error
+            import logging
+            logging.error(f"Password hashing algorithm error: {e}")
+            # If hash algorithm fails, assume password is wrong (safer than exception)
+            return False
+
+    
+    @staticmethod
+    def validate_password_strength(password: str) -> None:
+        """Validate password meets minimum security requirements"""
+        if len(password) < 8:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    "Password validation error: password may be too long for the "
-                    "bcrypt algorithm (72 bytes). Please use a shorter password, "
-                    "or reset the user's password. Consider using `argon2` or "
-                    "`bcrypt_sha256` for long passphrases.`"
-                ),
+                detail="Password must be at least 8 characters long"
+            )
+        if not any(c.isupper() for c in password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must contain at least one uppercase letter"
+            )
+        if not any(c.islower() for c in password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must contain at least one lowercase letter"
+            )
+        if not any(c.isdigit() for c in password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must contain at least one number"
             )
     
     @staticmethod
@@ -70,22 +108,26 @@ class AuthService:
         try:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
             if payload.get("type") != token_type:
+                # Log detailed error server-side for debugging
+                import logging
+                logging.error(f"Invalid token type. Expected {token_type}, got {payload.get('type')}")
+                # Return generic message to user
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail=f"Invalid token type. Expected {token_type}, got {payload.get('type')}"
+                    detail="Invalid token. Please login again."
                 )
             return payload
+        except HTTPException:
+            # Re-raise HTTPException as-is
+            raise
         except JWTError as e:
-            error_msg = str(e)
-            if "Signature has expired" in error_msg:
-                detail = "Token has expired. Please login again to get a fresh token."
-            elif "Invalid token" in error_msg or "Malformed" in error_msg:
-                detail = "Invalid or malformed token."
-            else:
-                detail = f"Could not validate credentials: {error_msg}"
+            # Log detailed error server-side for debugging
+            import logging
+            logging.error(f"Token verification failed: {type(e).__name__}: {e}")
+            # Return generic message to user (don't expose JWT library details)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=detail,
+                detail="Invalid or expired token. Please login again.",
                 headers={"WWW-Authenticate": "Bearer"},
             )
     
@@ -134,11 +176,6 @@ class AuthService:
         # This helps with time synchronization issues between server and authenticator app
         result = totp.verify(token, valid_window=2)
         
-        # Debug logging
-        if not result:
-            current_code = totp.now()
-            print(f"[2FA DEBUG] Expected code: {current_code}, Received: {token}, Valid: {result}")
-        
         return result 
     
     @staticmethod
@@ -166,6 +203,9 @@ class AuthService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already registered"
             )
+        
+        # Validate password strength
+        AuthService.validate_password_strength(password)
         
         hashed_password = AuthService.get_password_hash(password)
         
@@ -196,7 +236,8 @@ class AuthService:
             )
         
         secret = AuthService.generate_otp_secret()
-        user.otp_secret = secret
+        # Encrypt OTP secret before storing
+        user.otp_secret = AuthService._encrypt_otp_secret(secret)
         db.commit()
         
         uri = AuthService.get_totp_uri(user.email, secret)
@@ -217,7 +258,9 @@ class AuthService:
                 detail="2FA not set up. Call setup endpoint first"
             )
         
-        if not AuthService.verify_otp(user.otp_secret, token):
+        # Decrypt OTP secret before verification
+        secret = AuthService._decrypt_otp_secret(user.otp_secret)
+        if not AuthService.verify_otp(secret, token):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid OTP token"

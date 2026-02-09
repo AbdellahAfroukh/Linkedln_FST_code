@@ -5,6 +5,7 @@ from models.associations import user_thematique_association, user_specialite_ass
 from models.user import User, Projet, UserType
 from models.organisation import University, Etablissement, Departement, Laboratoire,ThematiqueDeRecherche, Specialite, Equipe
 from models.google_scholar import GoogleScholarIntegration, Publication
+from models.scopus import ScopusIntegration, ScopusPublication
 from models.cv import CV,Contact,Competence,Formation,Langue,Experience
 from models.chat import Chat, Message
 from models.connection import Connection

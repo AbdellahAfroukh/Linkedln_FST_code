@@ -20,34 +20,26 @@ export const apiClient = axios.create({
 });
 
 // Token management
-let accessToken: string | null = null;
-let refreshToken: string | null = null;
+// Access token stored in sessionStorage (auto-clears on browser close - more secure)
+// Refresh token stored in localStorage (persists across sessions for remember-me)
+// NOTE: We don't cache tokens in memory - we always read from storage to ensure freshness
+// This is critical for WebSocket connections and token refresh flows
 
 export const setTokens = (access: string, refresh: string) => {
-  accessToken = access;
-  refreshToken = refresh;
-  localStorage.setItem('access_token', access);
+  sessionStorage.setItem('access_token', access);
   localStorage.setItem('refresh_token', refresh);
 };
 
 export const getAccessToken = (): string | null => {
-  if (!accessToken) {
-    accessToken = localStorage.getItem('access_token');
-  }
-  return accessToken;
+  return sessionStorage.getItem('access_token');
 };
 
 export const getRefreshToken = (): string | null => {
-  if (!refreshToken) {
-    refreshToken = localStorage.getItem('refresh_token');
-  }
-  return refreshToken;
+  return localStorage.getItem('refresh_token');
 };
 
 export const clearTokens = () => {
-  accessToken = null;
-  refreshToken = null;
-  localStorage.removeItem('access_token');
+  sessionStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
 };
 
@@ -83,12 +75,20 @@ const processQueue = (error: Error | null = null) => {
   failedQueue = [];
 };
 
+// Endpoints that should NOT trigger token refresh on 401
+const AUTH_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/verify-2fa'];
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiError>) => {
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Don't try to refresh token for authentication endpoints - let the error through
+    const isAuthEndpoint = AUTH_ENDPOINTS.some(endpoint => 
+      originalRequest.url?.includes(endpoint)
+    );
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
