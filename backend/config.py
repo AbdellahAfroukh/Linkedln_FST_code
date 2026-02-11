@@ -1,13 +1,16 @@
 from pydantic_settings import BaseSettings
 from typing import List
+from pathlib import Path
 
+# Get the directory where this config file is located
+BASE_DIR = Path(__file__).resolve().parent
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "postgresql://postgres:1234@localhost:5433/LINKEDINFST"
+    DATABASE_URL: str
     
     # JWT Settings
-    SECRET_KEY: str = "EnVRaDQSe2yjc2vTs-qJdELhQUDPihsM1FXkqFWbbW8"
+    SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -15,19 +18,19 @@ class Settings(BaseSettings):
     # 2FA Settings
     OTP_ISSUER: str = "AcademicPlatform"
     
-    # Email Settings (Outlook SMTP - No app password needed!)
-    SMTP_USER: str = "abdellahafroukh9@gmail.com"
-    SMTP_PASSWORD: str = "htyb gltz lrut famx"  # new app password
+    # Email Settings
+    SMTP_USER: str
+    SMTP_PASSWORD: str
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
-    FRONTEND_URL: str = "http://localhost:5173"  # Frontend URL for verification links
+    FRONTEND_URL: str = "http://localhost:5173"
     EMAIL_VERIFICATION_EXPIRY_HOURS: int = 24
     
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:5713", "http://localhost:8000", "http://localhost:5173"]
+    CORS_ORIGINS: str  # Will be parsed into a list
     
     # Scopus API
-    SCOPUS_API_KEY: str = "01c3e1213a3b51108e1408c74d241015"
+    SCOPUS_API_KEY: str
     SCOPUS_API_BASE_URL: str = "https://api.elsevier.com/content"
     
     # Application
@@ -36,8 +39,13 @@ class Settings(BaseSettings):
     DEBUG: bool = True
 
     class Config:
-        env_file = ".env"
+        env_file = str(BASE_DIR / ".env")
         case_sensitive = True
+    
+    @property
+    def cors_origins_list(self) -> List[str]:
+        """Parse CORS_ORIGINS string into a list"""
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
 
 
 settings = Settings()

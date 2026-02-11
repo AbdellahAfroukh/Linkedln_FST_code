@@ -1,49 +1,154 @@
-# Quick Start (Run the App)
+# Quick Start Guide
 
-## 1) Start Backend
+## Prerequisites
+
+- **Python 3.8+** installed
+- **Node.js 16+** and npm installed
+- **PostgreSQL** database running
+- **Git** installed
+
+## 1) Clone & Setup Environment Variables
 
 ```bash
-cd backend
+git clone <repository-url>
+cd Linkedln_FST_code
+```
+
+### Configure Backend Environment
+
+1. Navigate to backend folder:
+
+   ```bash
+   cd backend
+   ```
+
+2. Copy the example environment file:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+3. Edit `.env` file with your actual credentials:
+
+   ```env
+   # Database Configuration
+   DATABASE_URL=postgresql://username:password@localhost:5432/your_database_name
+
+   # JWT Security
+   SECRET_KEY=your-secret-key-here
+
+   # Email Configuration (Gmail SMTP)
+   SMTP_USER=your-email@gmail.com
+   SMTP_PASSWORD=your-app-specific-password
+
+   # CORS Origins (comma-separated)
+   CORS_ORIGINS=http://localhost:5173,http://localhost:8000
+
+   # Scopus API (optional)
+   SCOPUS_API_KEY=your-scopus-api-key
+   ```
+
+   **Important Notes:**
+   - For Gmail SMTP, use an [App-Specific Password](https://support.google.com/accounts/answer/185833)
+   - Generate a secure SECRET_KEY: `openssl rand -hex 32`
+   - Ensure PostgreSQL is running and create the database before starting
+
+## 2) Start Backend
+
+Create and activate virtual environment:
+
+```bash
 python -m venv .venv
 ```
 
 Activate:
 
-- Windows (PowerShell):
+- **Windows (PowerShell):**
   ```bash
   .\.venv\Scripts\Activate.ps1
   ```
-- Windows (cmd):
+- **Windows (cmd):**
   ```bash
   .\.venv\Scripts\activate.bat
   ```
-- macOS/Linux:
+- **macOS/Linux:**
   ```bash
   source .venv/bin/activate
   ```
+
+Install dependencies and run:
 
 ```bash
 pip install -r requirements.txt
 python main.py
 ```
 
-API: http://localhost:8000
+API will be available at: **http://localhost:8000**
 
-## 2) Create the First Admin (One-time)
+## 3) Create the First Admin (One-time)
+
+After the backend is running, create an admin user:
 
 ```bash
 python scripts/create_admin.py --email admin@example.com --full-name "Admin User" --password "StrongPassword123"
 ```
 
-## 3) Start Frontend
+## 4) Start Frontend
+
+Open a new terminal, navigate to frontend folder:
 
 ```bash
-cd ../frontend
+cd frontend
 npm install
 npm run dev
 ```
 
-App: http://localhost:5173
+App will be available at: **http://localhost:5173**
+
+---
+
+## 🎉 You're Ready!
+
+- **Frontend:** http://localhost:5173
+- **Backend API:** http://localhost:8000
+- **API Docs (Swagger):** http://localhost:8000/docs
+
+Login with your admin credentials to start using the platform!
+
+---
+
+## Troubleshooting
+
+### Backend won't start
+
+**Error: "ValidationError: Field required"**
+
+- Make sure you created and filled the `.env` file in the `backend` folder
+- Verify all required fields are present (DATABASE_URL, SECRET_KEY, SMTP_USER, SMTP_PASSWORD, CORS_ORIGINS, SCOPUS_API_KEY)
+
+**Error: "Could not connect to database"**
+
+- Ensure PostgreSQL is running
+- Check DATABASE_URL in `.env` has correct credentials
+- Create the database if it doesn't exist: `createdb your_database_name`
+
+**Error: "SMTP Authentication failed"**
+
+- For Gmail, use an App-Specific Password, not your regular password
+- Enable 2-Step Verification in your Google Account first
+
+### Frontend won't start
+
+**Error: "npm: command not found"**
+
+- Install Node.js from https://nodejs.org/
+
+**Error: "Failed to fetch from API"**
+
+- Make sure backend is running on http://localhost:8000
+- Check CORS_ORIGINS in backend `.env` includes http://localhost:5173
+
+---
 
 ### 3. Show Loading & Error States
 
