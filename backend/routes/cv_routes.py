@@ -443,8 +443,8 @@ def download_cv_as_pdf(db: Session = Depends(get_db), current_user: User = Depen
     try:
         # Create PDF document
         doc = SimpleDocTemplate(pdf_path, pagesize=A4, 
-                               rightMargin=0.6*inch, leftMargin=0.6*inch,
-                               topMargin=0.7*inch, bottomMargin=0.7*inch)
+                               rightMargin=0.75*inch, leftMargin=0.75*inch,
+                               topMargin=0.75*inch, bottomMargin=0.75*inch)
         
         # Container for the 'Flowable' objects
         elements = []
@@ -452,240 +452,222 @@ def download_cv_as_pdf(db: Session = Depends(get_db), current_user: User = Depen
         # Define custom styles
         styles = getSampleStyleSheet()
         
-        # Title Style - IMPROVED
-        title_style = ParagraphStyle(
-            'CustomTitle',
+        # Name Style - Large, bold, centered
+        name_style = ParagraphStyle(
+            'Name',
             parent=styles['Heading1'],
-            fontSize=28,
-            textColor=colors.HexColor('#0f172a'),
-            spaceAfter=6,
+            fontSize=24,
+            textColor=colors.black,
+            spaceAfter=8,
             alignment=TA_CENTER,
             fontName='Helvetica-Bold',
-            leading=32
+            leading=28
         )
         
-        # Subtitle Style - IMPROVED
-        subtitle_style = ParagraphStyle(
-            'CustomSubtitle',
+        # Title/Profile Style - Centered, smaller
+        profile_style = ParagraphStyle(
+            'Profile',
             parent=styles['Normal'],
             fontSize=11,
-            textColor=colors.HexColor('#64748b'),
+            textColor=colors.HexColor('#333333'),
             spaceAfter=20,
             alignment=TA_CENTER,
             fontName='Helvetica',
             leading=14
         )
         
-        # Professional Name Style - NEW
-        name_style = ParagraphStyle(
-            'ProfessionalName',
-            parent=styles['Normal'],
-            fontSize=13,
-            fontName='Helvetica-Bold',
-            textColor=colors.HexColor('#0f172a'),
-            spaceAfter=12,
-            alignment=TA_CENTER,
-            leading=15
-        )
-        
-        # Section Header Style - IMPROVED
+        # Section Header Style - Bold, uppercase with underline
         section_style = ParagraphStyle(
             'SectionHeader',
             parent=styles['Heading2'],
             fontSize=12,
-            textColor=colors.HexColor('#FFFFFF'),
+            textColor=colors.black,
             spaceAfter=10,
-            spaceBefore=12,
+            spaceBefore=15,
             fontName='Helvetica-Bold',
-            borderColor=colors.HexColor('#1e40af'),
+            leading=14,
             borderWidth=0,
-            borderPadding=8,
-            backColor=colors.HexColor('#1e40af'),
-            textTransform='uppercase',
-            letterSpacing=0.5
+            borderPadding=0
         )
         
-        # Content Style - IMPROVED
-        content_style = ParagraphStyle(
-            'Content',
-            parent=styles['Normal'],
-            fontSize=9.5,
-            textColor=colors.HexColor('#1e293b'),
-            spaceAfter=6,
-            fontName='Helvetica',
-            leading=13
-        )
-        
-        # Bold Content Style - IMPROVED
-        bold_style = ParagraphStyle(
-            'BoldContent',
+        # Job Title / Institution Style
+        job_title_style = ParagraphStyle(
+            'JobTitle',
             parent=styles['Normal'],
             fontSize=11,
-            textColor=colors.HexColor('#0f172a'),
-            spaceAfter=4,
+            textColor=colors.black,
+            spaceAfter=3,
             fontName='Helvetica-Bold',
             leading=13
         )
         
-        # Date Style - IMPROVED
+        # Company / School Style
+        company_style = ParagraphStyle(
+            'Company',
+            parent=styles['Normal'],
+            fontSize=10,
+            textColor=colors.HexColor('#333333'),
+            spaceAfter=3,
+            fontName='Helvetica',
+            leading=12
+        )
+        
+        # Date Style
         date_style = ParagraphStyle(
             'DateStyle',
             parent=styles['Normal'],
             fontSize=9,
-            textColor=colors.HexColor('#64748b'),
-            spaceAfter=6,
+            textColor=colors.HexColor('#666666'),
+            spaceAfter=8,
             fontName='Helvetica-Oblique',
             leading=11
         )
         
-        # ===== CV TITLE =====
-        elements.append(Paragraph(cv.titre, title_style))
-        if cv.description:
-            elements.append(Paragraph(cv.description, subtitle_style))
-        elements.append(Spacer(1, 0.15*inch))
+        # Content Style
+        content_style = ParagraphStyle(
+            'Content',
+            parent=styles['Normal'],
+            fontSize=10,
+            textColor=colors.HexColor('#333333'),
+            spaceAfter=10,
+            fontName='Helvetica',
+            leading=13,
+            alignment=TA_JUSTIFY
+        )
         
-        # ===== USER INFO =====
-        user_info = f"{current_user.nom.upper()} {current_user.prenom.upper()}"
-        elements.append(Paragraph(user_info, name_style))
-        elements.append(Spacer(1, 0.15*inch))
+        # Contact info style
+        contact_style = ParagraphStyle(
+            'Contact',
+            parent=styles['Normal'],
+            fontSize=9,
+            textColor=colors.HexColor('#333333'),
+            spaceAfter=2,
+            fontName='Helvetica',
+            leading=11,
+            alignment=TA_CENTER
+        )
         
-        # ===== CONTACT INFORMATION =====
+        # ===== HEADER SECTION =====
+        # Name
+        user_name = f"{current_user.prenom.upper()} {current_user.nom.upper()}"
+        elements.append(Paragraph(user_name, name_style))
+        
+        # CV Title
+        if cv.titre:
+            elements.append(Paragraph(cv.titre, profile_style))
+        
+        # Contact Information (centered, single line)
         if cv.contact:
-            contact_header = Table(
-                [[Paragraph("CONTACT INFORMATION", section_style)]],
-                colWidths=[7.5*inch],
-                style=TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#1e40af')),
-                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 10),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-                    ('TOPPADDING', (0, 0), (-1, -1), 8),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                    ('BOTTOMBORDER', (0, 0), (-1, -1), 2, colors.HexColor('#3b82f6')),
-                ])
-            )
-            elements.append(contact_header)
-            elements.append(Spacer(1, 0.1*inch))
-            
-            contact_data = []
+            contact_parts = []
             if cv.contact.email:
-                contact_data.append(["Email:", cv.contact.email])
+                contact_parts.append(cv.contact.email)
             if cv.contact.telephone:
-                contact_data.append(["Phone:", cv.contact.telephone])
+                contact_parts.append(cv.contact.telephone)
             if cv.contact.adresse:
-                contact_data.append(["Address:", cv.contact.adresse])
+                contact_parts.append(cv.contact.adresse)
             
-            if contact_data:
-                contact_table = Table(contact_data, colWidths=[1.2*inch, 6.3*inch])
-                contact_table.setStyle(TableStyle([
-                    ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-                    ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
-                    ('FONTSIZE', (0, 0), (-1, -1), 9.5),
-                    ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#64748b')),
-                    ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#1e293b')),
-                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                    ('RIGHTPADDING', (0, 0), (0, -1), 10),
-                    ('TOPPADDING', (0, 0), (-1, -1), 5),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-                    ('ROWBACKGROUNDS', (0, 0), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
-                    ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
-                ]))
-                elements.append(contact_table)
-                elements.append(Spacer(1, 0.2*inch))
+            if contact_parts:
+                contact_text = " — ".join(contact_parts)
+                elements.append(Paragraph(contact_text, contact_style))
+                elements.append(Spacer(1, 0.15*inch))
+        
+        # Description/Profile Summary
+        if cv.description:
+            elements.append(Spacer(1, 0.1*inch))
+            # Add a thin line separator
+            line = Table([['']], colWidths=[7*inch])
+            line.setStyle(TableStyle([
+                ('LINEABOVE', (0, 0), (-1, 0), 1, colors.black),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+            ]))
+            elements.append(line)
+            elements.append(Paragraph(cv.description, content_style))
         
         # ===== PROFESSIONAL EXPERIENCE =====
         if cv.experiences:
-            exp_header = Table(
-                [[Paragraph("PROFESSIONAL EXPERIENCE", section_style)]],
-                colWidths=[7.5*inch],
-                style=TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#1e40af')),
-                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 10),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-                    ('TOPPADDING', (0, 0), (-1, -1), 8),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                    ('BOTTOMBORDER', (0, 0), (-1, -1), 2, colors.HexColor('#3b82f6')),
-                ])
-            )
-            elements.append(exp_header)
+            # Section header with underline
+            elements.append(Spacer(1, 0.1*inch))
+            header_line = Table([["PROFESSIONAL EXPERIENCE"]], colWidths=[7*inch])
+            header_line.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 12),
+                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+                ('LINEBELOW', (0, 0), (-1, -1), 1.5, colors.black),
+                ('TOPPADDING', (0, 0), (-1, -1), 5),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ]))
+            elements.append(header_line)
             elements.append(Spacer(1, 0.1*inch))
             
-            for idx, exp in enumerate(sorted(cv.experiences, key=lambda x: x.dateDebut, reverse=True)):
-                exp_title = f"{exp.poste}"
-                if exp.entreprise:
-                    exp_title += f" at {exp.entreprise}"
-                elements.append(Paragraph(exp_title, bold_style))
+            for exp in sorted(cv.experiences, key=lambda x: x.dateDebut, reverse=True):
+                # Position title
+                elements.append(Paragraph(exp.poste, job_title_style))
                 
+                # Company name
+                if exp.entreprise:
+                    elements.append(Paragraph(exp.entreprise, company_style))
+                
+                # Dates
                 date_str = f"{exp.dateDebut.strftime('%B %Y')} — "
                 date_str += "Present" if exp.enCours else exp.dateFin.strftime('%B %Y') if exp.dateFin else "N/A"
                 elements.append(Paragraph(date_str, date_style))
                 
+                # Description
                 if exp.description:
                     elements.append(Paragraph(exp.description, content_style))
                 
-                if idx < len(cv.experiences) - 1:
-                    elements.append(Spacer(1, 0.12*inch))
-            
-            elements.append(Spacer(1, 0.2*inch))
+                elements.append(Spacer(1, 0.05*inch))
         
         # ===== EDUCATION =====
         if cv.formations:
-            edu_header = Table(
-                [[Paragraph("EDUCATION", section_style)]],
-                colWidths=[7.5*inch],
-                style=TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#1e40af')),
-                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 10),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-                    ('TOPPADDING', (0, 0), (-1, -1), 8),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                    ('BOTTOMBORDER', (0, 0), (-1, -1), 2, colors.HexColor('#3b82f6')),
-                ])
-            )
-            elements.append(edu_header)
+            elements.append(Spacer(1, 0.1*inch))
+            header_line = Table([["EDUCATION"]], colWidths=[7*inch])
+            header_line.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 12),
+                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+                ('LINEBELOW', (0, 0), (-1, -1), 1.5, colors.black),
+                ('TOPPADDING', (0, 0), (-1, -1), 5),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ]))
+            elements.append(header_line)
             elements.append(Spacer(1, 0.1*inch))
             
-            for idx, formation in enumerate(sorted(cv.formations, key=lambda x: x.dateDebut, reverse=True)):
-                edu_title = f"{formation.diplome}"
-                if formation.etablissement:
-                    edu_title += f", {formation.etablissement}"
-                elements.append(Paragraph(edu_title, bold_style))
+            for formation in sorted(cv.formations, key=lambda x: x.dateDebut, reverse=True):
+                # Degree
+                elements.append(Paragraph(formation.diplome, job_title_style))
                 
+                # Institution
+                if formation.etablissement:
+                    elements.append(Paragraph(formation.etablissement, company_style))
+                
+                # Dates
                 date_str = f"{formation.dateDebut.strftime('%B %Y')} — "
                 date_str += "Present" if formation.enCours else formation.dateFin.strftime('%B %Y') if formation.dateFin else "N/A"
                 elements.append(Paragraph(date_str, date_style))
                 
-                if idx < len(cv.formations) - 1:
-                    elements.append(Spacer(1, 0.12*inch))
-            
-            elements.append(Spacer(1, 0.2*inch))
+                elements.append(Spacer(1, 0.05*inch))
         
         # ===== SKILLS =====
         if cv.competences:
-            skills_header = Table(
-                [[Paragraph("SKILLS", section_style)]],
-                colWidths=[7.5*inch],
-                style=TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#1e40af')),
-                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 10),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-                    ('TOPPADDING', (0, 0), (-1, -1), 8),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                    ('BOTTOMBORDER', (0, 0), (-1, -1), 2, colors.HexColor('#3b82f6')),
-                ])
-            )
-            elements.append(skills_header)
+            elements.append(Spacer(1, 0.1*inch))
+            header_line = Table([["TECHNICAL SKILLS"]], colWidths=[7*inch])
+            header_line.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 12),
+                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+                ('LINEBELOW', (0, 0), (-1, -1), 1.5, colors.black),
+                ('TOPPADDING', (0, 0), (-1, -1), 5),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ]))
+            elements.append(header_line)
             elements.append(Spacer(1, 0.1*inch))
             
+            # Group skills by level
             skills_by_level = {}
             for comp in cv.competences:
                 level = comp.niveau.value.capitalize()
@@ -693,48 +675,32 @@ def download_cv_as_pdf(db: Session = Depends(get_db), current_user: User = Depen
                     skills_by_level[level] = []
                 skills_by_level[level].append(comp.nom)
             
+            # Display skills
             for level in ['Expert', 'Avance', 'Intermediaire', 'Debutant']:
                 if level in skills_by_level:
                     skills_text = f"<b>{level}:</b> {', '.join(skills_by_level[level])}"
                     elements.append(Paragraph(skills_text, content_style))
-            
-            elements.append(Spacer(1, 0.2*inch))
         
         # ===== LANGUAGES =====
         if cv.langues:
-            lang_header = Table(
-                [[Paragraph("LANGUAGES", section_style)]],
-                colWidths=[7.5*inch],
-                style=TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#1e40af')),
-                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 10),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-                    ('TOPPADDING', (0, 0), (-1, -1), 8),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                    ('BOTTOMBORDER', (0, 0), (-1, -1), 2, colors.HexColor('#3b82f6')),
-                ])
-            )
-            elements.append(lang_header)
+            elements.append(Spacer(1, 0.1*inch))
+            header_line = Table([["LANGUAGES"]], colWidths=[7*inch])
+            header_line.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 12),
+                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+                ('LINEBELOW', (0, 0), (-1, -1), 1.5, colors.black),
+                ('TOPPADDING', (0, 0), (-1, -1), 5),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ]))
+            elements.append(header_line)
             elements.append(Spacer(1, 0.1*inch))
             
-            lang_data = [[lang.nom, lang.niveau.value] for lang in cv.langues]
-            lang_table = Table(lang_data, colWidths=[3.5*inch, 4*inch])
-            lang_table.setStyle(TableStyle([
-                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-                ('FONTSIZE', (0, 0), (-1, -1), 9.5),
-                ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#1e293b')),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-                ('TOPPADDING', (0, 0), (-1, -1), 6),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-                ('ROWBACKGROUNDS', (0, 0), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
-            ]))
-            elements.append(lang_table)
+            # Display languages in a simple format
+            lang_texts = [f"<b>{lang.nom}:</b> {lang.niveau.value}" for lang in cv.langues]
+            lang_text = " • ".join(lang_texts)
+            elements.append(Paragraph(lang_text, content_style))
         
         # Build PDF
         doc.build(elements)

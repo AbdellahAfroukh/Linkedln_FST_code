@@ -89,7 +89,7 @@ class CVService:
         cv.cv_enabled = enabled
         db.commit()
         db.refresh(cv)
-        return {"cv_enabled": cv.cv_enabled}
+        return cv
 
     @staticmethod
     def list_contacts(db: Session, user: User):

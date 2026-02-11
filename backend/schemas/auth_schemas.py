@@ -34,6 +34,27 @@ class Token2FA(BaseModel):
     user: Optional[dict] = None
 
 
+class RegisterResponse(BaseModel):
+    """Response after registration - user needs to verify email"""
+    message: str
+    email: str
+    requires_email_verification: bool = True
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str = Field(..., min_length=1)
+
+
+class VerifyEmailResponse(BaseModel):
+    message: str
+    email: str
+    verified: bool
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
 class ProfileCompleteRequest(BaseModel):
     nom: str = Field(..., min_length=1)
     prenom: str = Field(..., min_length=1)

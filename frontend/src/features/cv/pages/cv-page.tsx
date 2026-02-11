@@ -135,22 +135,22 @@ export function CVPage() {
   const toggleEnabledMutation = useMutation({
     mutationFn: (enabled: boolean) =>
       enabled ? cvApi.enable() : cvApi.disable(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cv"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["cv"] });
+      await queryClient.refetchQueries({ queryKey: ["cv"] });
       toast.success(t("cv.cvUpdated"));
     },
     onError: () => toast.error(t("cv.failedToUpdateCVStatus")),
   });
 
   const handleCreateCV = () => {
-    if (!cvDescription.trim()) {
+    if (!cvTitle.trim()) {
       toast.error(t("cv.cvTitleRequired"));
       return;
     }
     createCVMutation.mutate({
-      description: cvDescription.trim(),
-      isPublic: false,
-      isEnabled: true,
+      titre: cvTitle.trim(),
+      description: cvDescription.trim() || undefined,
     });
   };
 
@@ -168,7 +168,7 @@ export function CVPage() {
 
   const handleToggleEnabled = () => {
     if (cv) {
-      toggleEnabledMutation.mutate(!cv.isEnabled);
+      toggleEnabledMutation.mutate(!cv.cv_enabled);
     }
   };
 
@@ -340,17 +340,17 @@ export function CVPage() {
                 size="sm"
                 onClick={handleToggleEnabled}
                 disabled={toggleEnabledMutation.isPending}
-                className={cv.isEnabled ? "" : "border-red-300 text-red-700"}
+                className={cv.cv_enabled ? "" : "border-red-300 text-red-700"}
               >
-                {cv.isEnabled ? (
-                  <>
-                    <Power className="h-4 w-4 mr-1" />
-                    {t("cv.enabled")}
-                  </>
-                ) : (
+                {cv.cv_enabled ? (
                   <>
                     <PowerOff className="h-4 w-4 mr-1" />
                     {t("cv.disabled")}
+                  </>
+                ) : (
+                  <>
+                    <Power className="h-4 w-4 mr-1" />
+                    {t("cv.enabled")}
                   </>
                 )}
               </Button>
@@ -574,7 +574,7 @@ function ContactSection() {
               placeholder={t("cv.address")}
               value={formData.adresse}
               onChange={(e) =>
-                setFormData({ ...formData, GitHub: e.target.value })
+                setFormData({ ...formData, adresse: e.target.value })
               }
             />
             <div className="flex gap-2">
@@ -917,11 +917,12 @@ function ExperiencesSection() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<ExperienceCreate>({
-    titre: "",
+    poste: "",
     entreprise: "",
     description: "",
     dateDebut: "",
     dateFin: "",
+    enCours: false,
   });
 
   const { data: experiences = [] } = useQuery({
@@ -937,11 +938,12 @@ function ExperiencesSection() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cv-experiences"] });
       setFormData({
-        titre: "",
+        poste: "",
         entreprise: "",
         description: "",
         dateDebut: "",
         dateFin: "",
+        enCours: false,
       });
       setShowForm(false);
       toast.success(t("cv.itemAdded"));
@@ -960,11 +962,12 @@ function ExperiencesSection() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cv-experiences"] });
       setFormData({
-        titre: "",
+        poste: "",
         entreprise: "",
         description: "",
         dateDebut: "",
         dateFin: "",
+        enCours: false,
       });
       setEditingId(null);
       setShowForm(false);
@@ -983,7 +986,7 @@ function ExperiencesSection() {
   });
 
   const handleAddExperience = () => {
-    if (!formData.titre || !formData.dateDebut) {
+    if (!formData.poste || !formData.dateDebut) {
       toast.error(t("cv.positionAndStartDateRequired"));
       return;
     }
@@ -1019,9 +1022,9 @@ function ExperiencesSection() {
           <div className="border-l-4 border-orange-500 pl-4 space-y-3 bg-orange-50 p-4 rounded">
             <Input
               placeholder={t("cv.positionRequired")}
-              value={formData.titre}
+              value={formData.poste}
               onChange={(e) =>
-                setFormData({ ...formData, titre: e.target.value })
+                setFormData({ ...formData, poste: e.target.value })
               }
             />
             <Input
@@ -1073,11 +1076,12 @@ function ExperiencesSection() {
                   setShowForm(false);
                   setEditingId(null);
                   setFormData({
-                    titre: "",
+                    poste: "",
                     entreprise: "",
                     description: "",
                     dateDebut: "",
                     dateFin: "",
+                    enCours: false,
                   });
                 }}
                 size="sm"
@@ -1096,7 +1100,7 @@ function ExperiencesSection() {
                 className="border-l-4 border-orange-500 rounded-lg p-4 bg-orange-50 flex justify-between items-start"
               >
                 <div className="flex-1">
-                  <p className="font-semibold text-lg">{experience.titre}</p>
+                  <p className="font-semibold text-lg">{experience.poste}</p>
                   {experience.entreprise && (
                     <p className="text-sm text-muted-foreground">
                       {experience.entreprise}

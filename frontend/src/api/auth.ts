@@ -81,6 +81,16 @@ export const authApi = {
     clearTokens();
     return response.data;
   },
+
+  verifyEmail: async (data: { token: string }): Promise<{ message: string; email: string; verified: boolean }> => {
+    const response = await apiClient.post('/auth/verify-email', data);
+    return response.data;
+  },
+
+  resendVerificationEmail: async (email: string): Promise<{ message: string }> => {
+    const response = await apiClient.post('/auth/resend-verification-email', { email });
+    return response.data;
+  },
 };
 
 // Organization endpoints for profile completion (public for authenticated users)

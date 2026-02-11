@@ -53,36 +53,35 @@ export function AppLayout() {
     navigate("/login");
   };
 
-  const navItems = [
-    { to: "/dashboard", icon: Home, label: t("nav.dashboard") },
-    { to: "/posts", icon: FileText, label: t("nav.posts") },
-    { to: "/feed", icon: Rss, label: t("nav.feed") },
-    { to: "/people", icon: Users, label: t("nav.people") },
-    { to: "/connections", icon: Users, label: t("nav.connections") },
-    { to: "/chats", icon: MessageSquare, label: t("nav.chats") },
-    { to: "/projets", icon: FolderKanban, label: t("nav.projects") },
-    { to: "/cv", icon: UserCircle, label: t("nav.cv") },
-    {
-      to: "/google-scholar",
-      icon: GraduationCap,
-      label: t("nav.googleScholar"),
-    },
-    {
-      to: "/scopus",
-      icon: GraduationCap,
-      label: t("nav.scopus"),
-    },
-  ];
-
-  if (user?.user_type === "admin") {
-    navItems.push({ to: "/admin", icon: Shield, label: t("nav.admin") });
-  } else {
-    navItems.push({
-      to: "/profile/settings",
-      icon: Settings,
-      label: t("nav.settings"),
-    });
-  }
+  // Admin users only see the admin page
+  const navItems =
+    user?.user_type === "admin"
+      ? [{ to: "/admin", icon: Shield, label: t("nav.admin") }]
+      : [
+          { to: "/dashboard", icon: Home, label: t("nav.dashboard") },
+          { to: "/posts", icon: FileText, label: t("nav.posts") },
+          { to: "/feed", icon: Rss, label: t("nav.feed") },
+          { to: "/people", icon: Users, label: t("nav.people") },
+          { to: "/connections", icon: Users, label: t("nav.connections") },
+          { to: "/chats", icon: MessageSquare, label: t("nav.chats") },
+          { to: "/projets", icon: FolderKanban, label: t("nav.projects") },
+          { to: "/cv", icon: UserCircle, label: t("nav.cv") },
+          {
+            to: "/google-scholar",
+            icon: GraduationCap,
+            label: t("nav.googleScholar"),
+          },
+          {
+            to: "/scopus",
+            icon: GraduationCap,
+            label: t("nav.scopus"),
+          },
+          {
+            to: "/profile/settings",
+            icon: Settings,
+            label: t("nav.settings"),
+          },
+        ];
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -79,10 +79,10 @@ export function FileUpload({
           accept={
             accept ||
             (type === "image"
-              ? "image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
+              ? "image/jpeg,image/png,image/gif,image/webp,image/svg+xml,image/bmp,image/tiff"
               : type === "document"
                 ? ".pdf,.doc,.docx,.txt,.xls,.xlsx"
-                : "image/jpeg,image/png,image/gif,image/webp,image/svg+xml,.pdf,.doc,.docx,.txt,.xls,.xlsx")
+                : "image/jpeg,image/png,image/gif,image/webp,image/svg+xml,image/bmp,image/tiff,.pdf,.doc,.docx,.txt,.xls,.xlsx")
           }
           onChange={handleFileChange}
           disabled={isUploading}

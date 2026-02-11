@@ -15,6 +15,14 @@ class Settings(BaseSettings):
     # 2FA Settings
     OTP_ISSUER: str = "AcademicPlatform"
     
+    # Email Settings (Outlook SMTP - No app password needed!)
+    SMTP_USER: str = "abdellahafroukh9@gmail.com"
+    SMTP_PASSWORD: str = "htyb gltz lrut famx"  # new app password
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    FRONTEND_URL: str = "http://localhost:5173"  # Frontend URL for verification links
+    EMAIL_VERIFICATION_EXPIRY_HOURS: int = 24
+    
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:5713", "http://localhost:8000", "http://localhost:5173"]
     

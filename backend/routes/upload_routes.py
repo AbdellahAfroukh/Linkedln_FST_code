@@ -16,7 +16,7 @@ UPLOAD_DIR = Path(__file__).parent.parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 # Allowed file types
-ALLOWED_IMAGES = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}
+ALLOWED_IMAGES = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".jfif", ".bmp", ".tif", ".tiff"}
 ALLOWED_DOCUMENTS = {".pdf", ".doc", ".docx", ".txt", ".xls", ".xlsx"}
 ALLOWED_EXTENSIONS = ALLOWED_IMAGES | ALLOWED_DOCUMENTS
 

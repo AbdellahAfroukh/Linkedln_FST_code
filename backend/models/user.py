@@ -26,6 +26,11 @@ class User(Base):
     profile_completed = Column(Boolean, default=False)
     otp_configured = Column(Boolean, default=False)
     otp_secret = Column(String, nullable=True)
+    
+    # Email verification fields
+    email_verified = Column(Boolean, default=False)
+    email_verification_token = Column(String, nullable=True)
+    email_verification_token_expiry = Column(String, nullable=True)
 
     # Profile completion
     nom = Column(String, nullable=True)

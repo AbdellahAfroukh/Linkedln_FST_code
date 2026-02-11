@@ -18,7 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 
 const loginSchema = (t: (key: string) => string) =>
   z.object({
@@ -41,6 +41,7 @@ export function LoginPage() {
   const { setUser } = useAuthStore();
   const [requires2FA, setRequires2FA] = useState(false);
   const [userEmail, setUserEmail] = useState("");
+  const [emailNotVerified, setEmailNotVerified] = useState(false);
 
   const loginForm = useForm<LoginForm>({
     resolver: zodResolver(loginSchema(t)),
@@ -75,7 +76,19 @@ export function LoginPage() {
       }
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.detail || t("auth.loginFailed"));
+      const errorDetail = error.response?.data?.detail || t("auth.loginFailed");
+
+      // Handle email not verified error
+      if (
+        error.response?.status === 403 &&
+        errorDetail.includes("Email not verified")
+      ) {
+        setEmailNotVerified(true);
+        setUserEmail(loginForm.getValues("email"));
+        toast.error(errorDetail);
+      } else {
+        toast.error(errorDetail);
+      }
     },
   });
 
@@ -158,6 +171,47 @@ export function LoginPage() {
               {t("auth.backToLogin")}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show email not verified error
+  if (emailNotVerified) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertCircle className="h-6 w-6 text-orange-600" />
+            {t("auth.emailNotVerified")}
+          </CardTitle>
+          <CardDescription>{t("auth.pleaseVerifyEmail")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="rounded-lg bg-orange-50 p-4 text-sm text-orange-800">
+            <p className="font-medium mb-2">{t("auth.verificationRequired")}</p>
+            <p className="text-orange-700">{userEmail}</p>
+          </div>
+
+          <Button
+            className="w-full"
+            onClick={() =>
+              navigate("/resend-verification", { state: { email: userEmail } })
+            }
+          >
+            {t("auth.resendVerificationEmail")}
+          </Button>
+
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => {
+              setEmailNotVerified(false);
+              loginForm.reset();
+            }}
+          >
+            {t("auth.backToLogin")}
+          </Button>
         </CardContent>
       </Card>
     );

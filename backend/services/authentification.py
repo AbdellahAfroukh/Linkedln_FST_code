@@ -11,6 +11,7 @@ from fastapi import HTTPException, status
 from models.user import User, UserType
 from cryptography.fernet import Fernet
 import secrets
+import logging
 
 from config import settings
 
@@ -212,18 +213,34 @@ class AuthService:
         # Admin users don't need profile completion
         profile_completed = (user_type == UserType.ADMIN)
         
+        # Generate email verification token
+        verification_token = secrets.token_urlsafe(32)
+        token_expiry = (datetime.now(timezone.utc) + timedelta(hours=settings.EMAIL_VERIFICATION_EXPIRY_HOURS)).isoformat()
+        
         new_user = User(
             email=email,
             password=hashed_password,
             fullName=fullName,
             user_type=user_type,
             profile_completed=profile_completed,
-            otp_configured=False
+            otp_configured=False,
+            email_verified=False,
+            email_verification_token=verification_token,
+            email_verification_token_expiry=token_expiry
         )
         
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
+        
+        # Send verification email
+        try:
+            from services.email_service import EmailService
+            EmailService.send_verification_email(email, verification_token, fullName)
+        except Exception as e:
+            logging.error(f"Failed to send verification email to {email}: {str(e)}")
+            # Don't fail registration if email fails, but log it
+        
         return new_user
     
     @staticmethod

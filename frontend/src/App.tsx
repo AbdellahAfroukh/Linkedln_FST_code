@@ -16,6 +16,8 @@ import { AuthLayout } from "./layouts/auth-layout";
 import { LoginPage } from "./features/auth/pages/login-page";
 import { RegisterPage } from "./features/auth/pages/register-page";
 import { CompleteProfilePage } from "./features/auth/pages/complete-profile-page";
+import { VerifyEmailPage } from "./features/auth/pages/verify-email-page";
+import { ResendVerificationPage } from "./features/auth/pages/resend-verification-page";
 
 // Dashboard
 import { DashboardPage } from "./features/dashboard/pages/dashboard-page";
@@ -62,6 +64,11 @@ function App() {
               <Route element={<AuthLayout />}>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
+                <Route path="/verify-email" element={<VerifyEmailPage />} />
+                <Route
+                  path="/resend-verification"
+                  element={<ResendVerificationPage />}
+                />
               </Route>
 
               {/* Protected routes */}

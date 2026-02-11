@@ -16,30 +16,31 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2 } from "lucide-react";
+import { useState } from "react";
 
-const registerSchema = (t: (key: string) => string) =>
-  z
-    .object({
-      fullName: z.string().min(2, t("auth.fullName")),
-      email: z.string().email(t("auth.email")),
-      password: z.string().min(8, t("auth.password")),
-      confirmPassword: z.string(),
-      user_type: z.enum(["enseignant", "doctorant"]),
-    })
-    .refine((data) => data.password === data.confirmPassword, {
-      message: t("auth.confirmPassword"),
-      path: ["confirmPassword"],
-    });
+const registerSchema = z
+  .object({
+    fullName: z.string().min(2, "Full name must be at least 2 characters"),
+    email: z.string().email("Please enter a valid email"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z.string(),
+    user_type: z.enum(["enseignant", "doctorant"]),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 type RegisterForm = z.infer<typeof registerSchema>;
 
 export function RegisterPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [registeredEmail, setRegisteredEmail] = useState<string>("");
 
   const form = useForm<RegisterForm>({
-    resolver: zodResolver(registerSchema(t)),
+    resolver: zodResolver(registerSchema),
     defaultValues: {
       fullName: "",
       email: "",
@@ -51,9 +52,11 @@ export function RegisterPage() {
 
   const registerMutation = useMutation({
     mutationFn: authApi.register,
-    onSuccess: () => {
+    onSuccess: (response) => {
+      // Show verification email message instead of redirecting
+      setRegisteredEmail(response.email);
+      form.reset();
       toast.success(t("auth.registrationSuccessful"));
-      navigate("/login");
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.detail || t("auth.registrationFailed"));
@@ -62,8 +65,61 @@ export function RegisterPage() {
 
   const onSubmit = (data: RegisterForm) => {
     const { confirmPassword, ...registerData } = data;
-    registerMutation.mutate(registerData);
+    registerMutation.mutate(registerData as any);
   };
+
+  // Show email verification message after successful registration
+  if (registeredEmail) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CheckCircle2 className="h-6 w-6 text-green-600" />
+            {t("auth.registrationSuccessful")}
+          </CardTitle>
+          <CardDescription>{t("auth.emailVerificationSent")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="rounded-lg bg-blue-50 p-4 text-sm text-blue-800">
+            <p className="font-medium mb-1">
+              {t("auth.checkEmailVerification")}
+            </p>
+            <p className="text-blue-700">{registeredEmail}</p>
+            <p className="text-blue-600 mt-2 text-xs">
+              {t("auth.verificationLinkExpires")}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm text-gray-600">
+              {t("auth.didntReceiveEmail")}
+            </p>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                navigate("/resend-verification", {
+                  state: { email: registeredEmail },
+                });
+              }}
+            >
+              {t("auth.resendVerificationEmail")}
+            </Button>
+          </div>
+
+          <p className="text-center text-sm text-gray-600">
+            {t("auth.alreadyVerified")}{" "}
+            <Link
+              to="/login"
+              className="text-primary hover:underline font-medium"
+            >
+              {t("auth.signIn")}
+            </Link>
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>

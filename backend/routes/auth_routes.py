@@ -15,7 +15,11 @@ from schemas.auth_schemas import (
     UserResponse,
     ProfileCompleteRequest,
     UserSearchResponse,
-    UserSearchResult
+    UserSearchResult,
+    RegisterResponse,
+    VerifyEmailRequest,
+    VerifyEmailResponse,
+    ResendVerificationRequest
 )
 from dependencies import get_current_user, get_current_active_user
 from models.user import User, UserType
@@ -59,13 +63,14 @@ def user_to_response(user: User) -> dict:
     return user_dict
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 def register(user_data: UserRegister, db: Session = Depends(get_db)):
     """
     Register a new user
     - Validates email uniqueness
     - Hashes password
     - Creates user account based on role
+    - Sends verification email
     """
     user = AuthService.register_user(
         db=db,
@@ -74,13 +79,18 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
         fullName=user_data.fullName,
         user_type=user_data.user_type
     )
-    return user
+    return RegisterResponse(
+        message="User registered successfully. Please check your email to verify your account.",
+        email=user.email,
+        requires_email_verification=True
+    )
 
 
 @router.post("/login", response_model=Token2FA)
 def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
     """
     Login user with email and password
+    - Checks if email is verified
     - If 2FA is enabled, returns requires_2fa=True
     - Otherwise returns access and refresh tokens
     """
@@ -95,6 +105,13 @@ def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
             headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Check if email is verified
+    if not user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email not verified. Please check your email for the verification link."
         )
 
     # Check if 2FA is enabled
@@ -122,6 +139,94 @@ def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
             "otp_configured": user.otp_configured
         }
     )
+
+
+@router.post("/verify-email", response_model=VerifyEmailResponse)
+def verify_email(data: VerifyEmailRequest, db: Session = Depends(get_db)):
+    """
+    Verify user email with verification token
+    - Accepts token from email verification link
+    - Sets email_verified to True
+    - Returns success message
+    """
+    from datetime import datetime, timezone
+    
+    # Find user by verification token
+    user = db.query(User).filter(User.email_verification_token == data.token).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid verification token"
+        )
+    
+    # Check if token is expired
+    if user.email_verification_token_expiry:
+        expiry_time = datetime.fromisoformat(user.email_verification_token_expiry)
+        if datetime.now(timezone.utc) > expiry_time:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Verification token expired. Please request a new one."
+            )
+    
+    # Mark email as verified
+    user.email_verified = True
+    user.email_verification_token = None
+    user.email_verification_token_expiry = None
+    db.commit()
+    
+    return VerifyEmailResponse(
+        message="Email verified successfully",
+        email=user.email,
+        verified=True
+    )
+
+
+@router.post("/resend-verification-email")
+def resend_verification_email(data: ResendVerificationRequest, db: Session = Depends(get_db)):
+    """
+    Resend verification email to user
+    - Generates a new verification token
+    - Sends new verification email
+    """
+    import secrets
+    from datetime import datetime, timezone, timedelta
+    from config import settings
+    from services.email_service import EmailService
+    
+    user = db.query(User).filter(User.email == data.email).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not found"
+        )
+    
+    if user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is already verified"
+        )
+    
+    # Generate new verification token
+    verification_token = secrets.token_urlsafe(32)
+    token_expiry = (datetime.now(timezone.utc) + timedelta(hours=settings.EMAIL_VERIFICATION_EXPIRY_HOURS)).isoformat()
+    
+    user.email_verification_token = verification_token
+    user.email_verification_token_expiry = token_expiry
+    db.commit()
+    
+    # Send verification email
+    try:
+        EmailService.send_verification_email(user.email, verification_token, user.fullName)
+        return {"message": "Verification email sent successfully"}
+    except Exception as e:
+        import logging
+        logging.error(f"Failed to resend verification email to {user.email}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send verification email"
+        )
 
 
 @router.post("/complete-profile", response_model=UserResponse)

@@ -128,7 +128,7 @@ export function CompleteProfilePage() {
   );
 
   const filteredLaboratoires = laboratoires?.filter(
-    (lab) => !selectedUniversityId || lab.univesityId === selectedUniversityId,
+    (lab) => !selectedUniversityId || lab.universityId === selectedUniversityId,
   );
 
   const completeMutation = useMutation({
