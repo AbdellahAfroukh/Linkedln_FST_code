@@ -49,9 +49,11 @@ export function UserProfilePage() {
                       src={transformUrl(user.photoDeProfil)}
                       alt={user.fullName}
                       className="h-full w-full object-cover cursor-pointer"
-                      onClick={() =>
-                        setPreviewImage(transformUrl(user.photoDeProfil))
-                      }
+                      onClick={() => {
+                        if (user.photoDeProfil) {
+                          setPreviewImage(transformUrl(user.photoDeProfil));
+                        }
+                      }}
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = "none";
                       }}

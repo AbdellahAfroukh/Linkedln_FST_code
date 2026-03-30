@@ -109,7 +109,7 @@ export function FeedPage() {
 
   const deleteCommentMutation = useMutation({
     mutationFn: (commentId: number) => postsApi.deleteComment(commentId),
-    onSuccess: () => {
+    onSuccess: (_, commentId) => {
       // Update local state instead of refetching
       setPosts((prev) =>
         prev.map((p) => ({

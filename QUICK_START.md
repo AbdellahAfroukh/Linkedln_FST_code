@@ -90,7 +90,7 @@ API will be available at: **http://localhost:8000**
 After the backend is running, create an admin user:
 
 ```bash
-python scripts/create_admin.py --email admin@example.com --full-name "Admin User" --password "StrongPassword123"
+python scripts/create_admin.py --email admin@example.com --full-name "Admin User" --password "12345678"
 ```
 
 ## 4) Start Frontend

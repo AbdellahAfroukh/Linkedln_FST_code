@@ -191,7 +191,7 @@ export function PostsFeedPage() {
     return url.split("/").pop() || "Document";
   };
 
-  const getReactionCounts = (reactions: (typeof posts)[0]["reactions"]) => {
+  const getReactionCounts = (reactions: (typeof myPosts)[0]["reactions"]) => {
     const counts: Record<string, number> = {
       like: 0,
       love: 0,

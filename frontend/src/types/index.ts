@@ -43,6 +43,8 @@ export interface UserBasicInfo {
   equipe?: Organisation;
 }
 
+export type UserSimple = UserBasicInfo;
+
 export interface Organisation {
   id: number;
   nom: string;
@@ -78,8 +80,8 @@ export interface Token2FAResponse {
 }
 
 export interface ProfileCompleteRequest {
-  nom: string;
-  prenom: string;
+  nom?: string;
+  prenom?: string;
   grade?: string;
   dateDeNaissance?: string;
   photoDeProfil?: string;
@@ -109,7 +111,7 @@ export interface RefreshTokenRequest {
 }
 
 export interface Disable2FARequest {
-  password: string;
+  password?: string;
 }
 
 // Organization types
@@ -365,9 +367,10 @@ export interface Experience {
 }
 
 export interface ExperienceCreate {
-  titre: string;
-  entreprise: string;
-  dateDebut: string;
+  titre?: string;
+  entreprise?: string;
+  poste?: string;
+  dateDebut?: string;
   dateFin?: string;
   description?: string;
 }
@@ -417,6 +420,35 @@ export interface MessageCreate {
 
 export interface ChatDetailResponse extends Chat {
   messages: Message[];
+}
+
+export interface ChatDetail {
+  id: number;
+  name?: string;
+  avatar?: string;
+  user1Id: number;
+  user2Id: number;
+  user1?: UserBasicInfo;
+  user2?: UserBasicInfo;
+  members?: UserBasicInfo[];
+  messages: Message[];
+}
+
+export interface MessageCreateRequest {
+  content: string;
+  receiverId?: number;
+  chatId?: number;
+  attachment?: string;
+}
+
+export interface CreateGroupChatRequest {
+  name: string;
+  member_ids: number[];
+  avatar?: string;
+}
+
+export interface AddMembersRequest {
+  member_ids: number[];
 }
 
 // Post types
@@ -586,70 +618,4 @@ export interface ApiError {
 
 export interface SuccessResponse {
   message: string;
-}
-// Chat types
-export type ChatType = 'direct' | 'group';
-
-export interface UserSimple {
-  id: number;
-  fullName: string;
-  photoDeProfil?: string;
-}
-
-export interface Message {
-  id: number;
-  content: string;
-  timestamp: string;
-  senderId: number;
-  chatId: number;
-  attachment?: string;
-  sender?: UserSimple;
-}
-
-export interface Chat {
-  id: number;
-  chat_type?: ChatType;
-  name?: string;
-  avatar?: string;
-  user1Id: number;
-  user2Id: number;
-  user1?: UserSimple;
-  user2?: UserSimple;
-  members?: UserSimple[];
-  messages: Message[];
-}
-
-export interface ChatDetail {
-  id: number;
-  chat_type?: ChatType;
-  name?: string;
-  avatar?: string;
-  user1Id: number;
-  user2Id: number;
-  user1?: UserSimple;
-  user2?: UserSimple;
-  members?: UserSimple[];
-  messages: Message[];
-}
-
-export interface MessageCreateRequest {
-  content: string;
-  receiverId?: number;
-  chatId?: number;
-  attachment?: string;
-}
-
-export interface CreateGroupChatRequest {
-  name: string;
-  member_ids: number[];
-  avatar?: string;
-}
-
-export interface AddMembersRequest {
-  member_ids: number[];
-}
-
-export interface ChatListResponse {
-  total: number;
-  chats: Chat[];
 }

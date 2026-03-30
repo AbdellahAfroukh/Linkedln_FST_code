@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { transformUrl } from "@/lib/url-utils";
 import { useTranslation } from "react-i18next";
 import {
   Dialog,
@@ -202,15 +201,6 @@ export function ProjetsPage() {
     },
     onError: () => toast.error(t("errors.somethingWentWrong")),
   });
-
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
 
   const handleViewProfile = async (userId: number) => {
     try {

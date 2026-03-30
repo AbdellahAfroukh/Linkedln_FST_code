@@ -67,7 +67,7 @@ app = FastAPI(
 # Add trusted host middleware
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["localhost", "127.0.0.1", "*.localhost"]
+    allowed_hosts=["localhost", "127.0.0.1", "*.localhost", "backend", "academic_backend"]
 )
 
 # Add rate limiting

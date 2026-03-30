@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.vite/
+coverage/
+.git/
+.gitignore
+.env
+.env.*
+__pycache__/
+*.log
+Dockerfile
+docker-compose.yml
