@@ -479,5 +479,3 @@ For issues or questions:
 3. Check backend FastAPI docs at `http://localhost:8000/docs`
 
 ---
-
-**Built with ❤️ for the FST Academic Community**

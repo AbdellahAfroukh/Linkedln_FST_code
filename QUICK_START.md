@@ -107,4 +107,3 @@ docker compose up --build
 
 ---
 
-**Happy coding!**
