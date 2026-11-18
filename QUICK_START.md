@@ -2,328 +2,109 @@
 
 ## Prerequisites
 
-- **Python 3.8+** installed
-- **Node.js 16+** and npm installed
-- **PostgreSQL** database running
+- **Docker Desktop** installed and running
 - **Git** installed
+- A copy of [backend/.env.example](backend/.env.example) saved as [backend/.env](backend/.env)
 
-## 1) Clone & Setup Environment Variables
+## 1) Clone the project
 
 ```bash
 git clone <repository-url>
 cd Linkedln_FST_code
 ```
 
-### Configure Backend Environment
+## 2) Configure backend environment
 
-1. Navigate to backend folder:
-
-   ```bash
-   cd backend
-   ```
-
-2. Copy the example environment file:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-3. Edit `.env` file with your actual credentials:
-
-   ```env
-   # Database Configuration
-   DATABASE_URL=postgresql://username:password@localhost:5432/your_database_name
-
-   # JWT Security
-   SECRET_KEY=your-secret-key-here
-
-   # Email Configuration (Gmail SMTP)
-   SMTP_USER=your-email@gmail.com
-   SMTP_PASSWORD=your-app-specific-password
-
-   # CORS Origins (comma-separated)
-   CORS_ORIGINS=http://localhost:5173,http://localhost:8000
-
-   # Scopus API (optional)
-   SCOPUS_API_KEY=your-scopus-api-key
-   ```
-
-   **Important Notes:**
-   - For Gmail SMTP, use an [App-Specific Password](https://support.google.com/accounts/answer/185833)
-   - Generate a secure SECRET_KEY: `openssl rand -hex 32`
-   - Ensure PostgreSQL is running and create the database before starting
-
-## 2) Start Backend
-
-Create and activate virtual environment:
+Copy the example file and fill in your real values:
 
 ```bash
-python -m venv .venv
+cd backend
+copy .env.example .env
 ```
 
-Activate:
+Required values:
 
-- **Windows (PowerShell):**
-  ```bash
-  .\.venv\Scripts\Activate.ps1
-  ```
-- **Windows (cmd):**
-  ```bash
-  .\.venv\Scripts\activate.bat
-  ```
-- **macOS/Linux:**
-  ```bash
-  source .venv/bin/activate
-  ```
+```env
+DATABASE_URL=postgresql://postgres:password@db:5432/LINKEDINFST
+SECRET_KEY=your-secret-key-here
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-gmail-app-password
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+FRONTEND_URL=http://localhost
+CORS_ORIGINS=http://localhost
+SCOPUS_API_KEY=your-scopus-api-key
+```
 
-Install dependencies and run:
+Notes:
+
+- For Gmail, use a **Google App Password**, not your normal account password.
+- `FRONTEND_URL` is the link users receive in email verification messages.
+- `CORS_ORIGINS` must include the URL your browser uses to open the app.
+
+## 3) Start everything with Docker
+
+From the project root:
 
 ```bash
-pip install -r requirements.txt
-python main.py
+docker compose up --build
 ```
 
-API will be available at: **http://localhost:8000**
+This starts:
 
-## 3) Create the First Admin (One-time)
+- PostgreSQL on the internal Docker network
+- FastAPI backend on http://localhost:8000
+- Nginx frontend on http://localhost
 
-After the backend is running, create an admin user:
+## 4) Open the app
+
+- Frontend: http://localhost
+- Backend API docs: http://localhost:8000/docs
+
+## 5) First login
+
+The admin user is created automatically on startup:
+
+- Email: `admin@example.com`
+- Password: `12345678`
+
+## 6) Stop the project
 
 ```bash
-python scripts/create_admin.py --email admin@example.com --full-name "Admin User" --password "12345678"
+docker compose down
 ```
 
-## 4) Start Frontend
-
-Open a new terminal, navigate to frontend folder:
+If you want to remove the database volume too:
 
 ```bash
-cd frontend
-npm install
-npm run dev
+docker compose down -v
 ```
-
-App will be available at: **http://localhost:5173**
-
----
-
-## 🎉 You're Ready!
-
-- **Frontend:** http://localhost:5173
-- **Backend API:** http://localhost:8000
-- **API Docs (Swagger):** http://localhost:8000/docs
-
-Login with your admin credentials to start using the platform!
-
----
 
 ## Troubleshooting
 
-### Backend won't start
+### Backend or frontend does not start
 
-**Error: "ValidationError: Field required"**
+- Confirm [backend/.env](backend/.env) exists and contains all required values.
+- Check the logs with `docker compose logs -f`.
 
-- Make sure you created and filled the `.env` file in the `backend` folder
-- Verify all required fields are present (DATABASE_URL, SECRET_KEY, SMTP_USER, SMTP_PASSWORD, CORS_ORIGINS, SCOPUS_API_KEY)
+### Email verification does not work
 
-**Error: "Could not connect to database"**
+- Make sure `SMTP_USER` is a real Gmail address.
+- Make sure `SMTP_PASSWORD` is a Gmail App Password.
+- Make sure 2-Step Verification is enabled on the Google account.
 
-- Ensure PostgreSQL is running
-- Check DATABASE_URL in `.env` has correct credentials
-- Create the database if it doesn't exist: `createdb your_database_name`
+### Browser cannot reach the app
 
-**Error: "SMTP Authentication failed"**
+- Use http://localhost, not the Docker container name.
+- If you changed the frontend URL, update `FRONTEND_URL` and `CORS_ORIGINS` to match.
 
-- For Gmail, use an App-Specific Password, not your regular password
-- Enable 2-Step Verification in your Google Account first
-
-### Frontend won't start
-
-**Error: "npm: command not found"**
-
-- Install Node.js from https://nodejs.org/
-
-**Error: "Failed to fetch from API"**
-
-- Make sure backend is running on http://localhost:8000
-- Check CORS_ORIGINS in backend `.env` includes http://localhost:5173
-
----
-
-### 3. Show Loading & Error States
-
-```tsx
-import { useQuery } from "@tanstack/react-query";
-
-function MyComponent() {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["myData"],
-    queryFn: fetchMyData,
-  });
-
-  if (isLoading) {
-    return <div>Loading...</div>; // Or use skeleton loader
-  }
-
-  if (error) {
-    return <div>Error: {error.message}</div>;
-  }
-
-  return <div>{/* Render data */}</div>;
-}
-```
-
-### 4. Display Toast Notifications
-
-```tsx
-import { toast } from "sonner";
-
-function MyComponent() {
-  const handleSuccess = () => {
-    toast.success("Action completed successfully!");
-  };
-
-  const handleError = () => {
-    toast.error("Something went wrong");
-  };
-
-  const handleInfo = () => {
-    toast.info("This is an informational message");
-  };
-
-  return <button onClick={handleSuccess}>Click me</button>;
-}
-```
-
-### 5. Protect Routes by Role
-
-```tsx
-// In App.tsx
-import { RoleProtectedRoute } from "./components/auth/protected-route";
-
-<Route element={<RoleProtectedRoute allowedRoles={["admin"]} />}>
-  <Route path="/admin" element={<AdminPage />} />
-</Route>;
-```
-
-### 6. Access Current User
-
-```tsx
-import { useAuthStore } from "@/store/auth";
-
-function MyComponent() {
-  const { user, logout } = useAuthStore();
-
-  return (
-    <div>
-      <p>Welcome, {user?.fullName}</p>
-      <p>Role: {user?.user_type}</p>
-      {user?.user_type === "admin" && <AdminPanel />}
-      <button onClick={logout}>Logout</button>
-    </div>
-  );
-}
-```
-
----
-
-## 🐛 Debugging Tips
-
-### Check API Calls
-
-Open browser DevTools → Network tab → Filter by "Fetch/XHR" to see all API requests.
-
-### Check React Query State
-
-The React Query DevTools are enabled at the bottom of the page (red icon).
-
-### Common Issues
-
-**Issue: "Token expired" error**
-
-- Solution: Refresh token flow should handle this automatically. Check console for errors.
-
-**Issue: CORS errors**
-
-- Solution: Backend must be running with CORS enabled. Check backend/main.py
-
-**Issue: TypeScript errors**
-
-- Solution: Run `npm run build` to see all type errors
-
-**Issue: Styles not applying**
-
-- Solution: Ensure Tailwind is configured correctly. Check `tailwind.config.js` and `postcss.config.js`
-
----
-
-## 📚 Reference
-
-### Key Files to Know
-
-- `src/App.tsx` - Main app component with all routes
-- `src/api/` - All API endpoint functions
-- `src/types/index.ts` - All TypeScript types
-- `src/lib/api-client.ts` - Axios instance with JWT interceptors
-- `src/store/auth.ts` - Authentication state management
-- `src/layouts/app-layout.tsx` - Main app layout with sidebar
-
-### Environment Variables
-
-```env
-VITE_API_BASE_URL=http://localhost:8000  # Backend API URL
-```
-
-### NPM Scripts
+### Need a clean reset
 
 ```bash
-npm run dev      # Start development server
-npm run build    # Build for production
-npm run preview  # Preview production build
-npm run lint     # Run ESLint
+docker compose down -v
+docker compose up --build
 ```
 
-### API Documentation
-
-- FastAPI Swagger UI: http://localhost:8000/docs
-- API Inventory: `frontend/API_INVENTORY.md`
-- Implementation Guide: `frontend/IMPLEMENTATION_GUIDE.md`
-
 ---
 
-## ✅ Testing Checklist Before Committing
-
-- [ ] No TypeScript errors (`npm run build`)
-- [ ] No console errors in browser
-- [ ] Tested on mobile view (responsive)
-- [ ] Loading states work
-- [ ] Error handling works
-- [ ] Forms validate correctly
-- [ ] Toast notifications appear
-- [ ] Backend integration successful
-
----
-
-## 🎯 Next Feature to Implement
-
-Pick one from the priority list:
-
-1. **Posts Feed** (High Priority)
-   - Create post form
-   - Display posts with user info
-   - Add comments
-   - Implement reactions
-
-2. **CV Builder** (High Priority)
-   - CV sections display
-   - Add/edit/delete for each section
-   - Public/private toggle
-
-3. **Connections** (Medium Priority)
-   - Send connection requests
-   - Accept/reject UI
-   - Connections list
-
----
-
-**Happy coding! 🚀**
+**Happy coding!**
